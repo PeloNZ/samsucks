@@ -190,11 +190,25 @@ if "$TIZEN" security-profiles list 2>/dev/null | grep -q "^$PROFILE "; then
   ok "profile '$PROFILE' already exists"
 else
   PW="$(get_env TIZEN_CERT_PASSWORD)"
-  [ -n "$PW" ] || PW=$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n') # 24 hex chars; od reads exactly 12 bytes, so no SIGPIPE
+  # The CLI treats a stored password that decodes as base64 as encrypted, and
+  # signing then stops at an "Author password:" prompt. The "-" in the "ss-"
+  # prefix is not a base64 character. od reads exactly 12 bytes, so no SIGPIPE.
+  case "$PW" in ss-*) ;; *) PW="ss-$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')" ;; esac
   set_env TIZEN_CERT_PASSWORD "$PW"
   "$TIZEN" certificate -a "$PROFILE" -p "$PW" -f "$PROFILE" >>"$LOG" 2>&1
   "$TIZEN" security-profiles add -n "$PROFILE" -a "$TIZEN_DATA/keystore/author/$PROFILE.p12" -p "$PW" >>"$LOG" 2>&1
   ok "created profile '$PROFILE' (password saved in .env)"
+fi
+# Without a desktop keyring (a container, a headless server) the CLI writes no
+# .pwd files, and signing fails with "Invalid password". Put the passwords in
+# profiles.xml instead. The distributor password is Samsung's public default.
+PROFILES="$TIZEN_DATA/profile/profiles.xml"
+if [ ! -f "$TIZEN_DATA/keystore/author/$PROFILE.pwd" ] && grep -q "$PROFILE\.pwd\"" "$PROFILES"; then
+  PW="$(get_env TIZEN_CERT_PASSWORD)" PROFILE="$PROFILE" perl -pi -e '
+    s{password="[^"]*/keystore/author/\Q$ENV{PROFILE}\E\.pwd"}{password="$ENV{PW}"}g;
+    s{password="[^"]*/tizen-distributor-signer\.pwd"}{password="tizenpkcs12passfordsigner"}g;
+  ' "$PROFILES"
+  ok "stored the signing passwords in the profile (no keyring)"
 fi
 "$TIZEN" cli-config "profiles.path=$TIZEN_DATA/profile/profiles.xml" >>"$LOG" 2>&1
 
