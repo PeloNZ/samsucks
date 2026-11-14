@@ -19,7 +19,8 @@ for arg in "$@"; do
   esac
 done
 
-# --- build: the app is plain JS modules, so building is a copy ---------------
+# --- build: copy app/, then bundle the JS modules into one script ------------
+command -v esbuild >/dev/null || { echo "esbuild not found. Run this in the dev container: ./scripts/dev.sh ./scripts/deploy.sh $*" >&2; exit 1; }
 OUT="$ROOT/build/app"
 rm -rf "$OUT" && mkdir -p "$ROOT/build"
 cp -R "$ROOT/app" "$OUT"
@@ -33,13 +34,14 @@ export const DEV_PLEX_URL = '$PLEX_URL';
 export const VERSION = '$VERSION';
 EOF
 else
-  rm -rf "$OUT/js/dev"
   sed -i.bak "s/^export const VERSION = .*/export const VERSION = '$VERSION';/" "$OUT/js/config.js" && rm "$OUT/js/config.js.bak"
 fi
-# Preload every module up front so the TV fetches them in parallel instead of
-# discovering the import graph one level at a time.
-PRELOADS=$(cd "$OUT" && find js -name '*.js' | sort | sed 's|.*|<link rel="modulepreload" href="&">|' | tr '\n' ' ')
-sed -i.bak "s|</head>|$PRELOADS</head>|" "$OUT/index.html" && rm "$OUT/index.html.bak"
+# Tizen 4.0 TVs run Chromium 56, which has no ES modules: bundle to one classic
+# script and lower newer syntax. In a release build, js/dev stays in the bundle
+# but never runs, because app.js imports it only when DEV is true.
+esbuild "$OUT/js/main.js" --bundle --format=iife --target=chrome56 --log-level=warning --outfile="$OUT/bundle.js"
+rm -rf "$OUT/js" && mkdir "$OUT/js" && mv "$OUT/bundle.js" "$OUT/js/main.js"
+sed -i.bak 's| type="module"||' "$OUT/index.html" && rm "$OUT/index.html.bak"
 echo "built $([ "$DEV" = 1 ] && echo dev || echo release) $VERSION → build/app"
 [ "$INSTALL" = 1 ] || exit 0
 
