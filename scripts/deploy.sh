@@ -70,7 +70,14 @@ WGT="$ROOT/build/samsucks.wgt"
 mv "$(ls "$ROOT"/build/*.wgt | head -1)" "$WGT"
 
 "$SDB" connect "$TARGET" >/dev/null
-DEVICE=$("$SDB" devices | awk -v t="$TARGET" '$1 == t { print $3 }')
+# A freshly started sdb server (each dev container starts one) can list no
+# devices for a moment after connect.
+DEVICE=""
+for _ in 1 2 3 4 5; do
+  DEVICE=$("$SDB" devices | awk -v t="$TARGET" '$1 == t { print $3 }')
+  [ -n "$DEVICE" ] && break
+  sleep 1
+done
 [ -n "$DEVICE" ] || {
   echo "Can't reach the TV at $TARGET. Is it on, with Developer Mode pointing at this computer?" >&2
   exit 1
