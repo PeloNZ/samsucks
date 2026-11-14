@@ -2,9 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-SamSUCKS is a Plex client for Samsung Tizen TVs. Plain ES modules, no framework, no npm, no bundler, no build step beyond a copy. There are no tests, linter or formatter.
+SamSUCKS is a Plex client for Samsung Tizen TVs. Source is plain ES modules, no framework, no npm. `deploy.sh` bundles it with esbuild for old TVs. There are no tests.
 
 ## Commands
+
+Run every script in the Ubuntu amd64 dev container. It matches the Ubuntu target machine and has the Tizen CLI, sdb, Node 22, esbuild and the checkers. The Tizen tools and certificates live in the `samsucks-home` Docker volume.
+
+    ./scripts/dev.sh                           # shell in the container (repo at /work, port 8790 published)
+    ./scripts/dev.sh <command>                 # run one command, e.g. ./scripts/dev.sh ./scripts/setup.sh
+    ./scripts/dev.sh ./scripts/check.sh        # Biome lint + format, Chromium 56 syntax, shellcheck, shfmt
+    ./scripts/dev.sh ./scripts/check.sh --fix  # apply lint fixes and formatting
+
+`dev.sh` passes the host's LAN IP as `HOST_IP`; `setup.sh` uses it instead of the container's IP. `setup.sh` logs all tool output to `build/setup.log` and keeps the installer download in `build/downloads/`.
 
 All TV commands read `.env` (made by `./scripts/setup.sh`): `TV_IP`, `TV_SDB_PORT`, `TIZEN_STUDIO`, `TIZEN_SIGN_PROFILE`, `DEV_HOST`, `DEV_SKIP_LOGIN`, `PLEX_SERVER_URL`, `TV_REMOTE_TOKEN`.
 
@@ -32,10 +41,10 @@ Chrome DevTools cannot attach to a retail TV. Dev builds talk to `tools/devserve
 
 `deploy.sh` copies `app/` to `build/app`, then:
 - dev: rewrites `build/app/js/config.js` (`DEV`, `DEV_HOST`, `DEV_PLEX_URL`, `VERSION`).
-- release: deletes `js/dev/` and sets `VERSION` from `app/config.xml`.
-- both: injects a `<link rel="modulepreload">` for every module into `index.html`.
+- release: sets `VERSION` from `app/config.xml`.
+- both: bundles `js/main.js` with esbuild (`--format=iife --target=chrome56`) into one classic script, `build/app/js/main.js`, and removes `type="module"` from `index.html`.
 
-Edit `app/js/config.js` only for defaults. Never edit `build/`. Release builds delete `app/js/dev/`, so load those files only by dynamic `import()` behind `DEV` (as `app.js` does). A static import breaks release builds. App version and app ID live in `app/config.xml`.
+Edit `app/js/config.js` only for defaults. Never edit `build/`. Load `app/js/dev/` only by dynamic `import()` behind `DEV` (as `app.js` does), so release builds never run it. App version, app ID and `required_version` live in `app/config.xml`.
 
 ## Architecture (app/js)
 
@@ -64,4 +73,4 @@ The TV CPU is slow; the README records measurements. Keep these rules:
 
 ## Target
 
-Chromium 69+ on Tizen 5.5+ (tested: 2022 Q60B, Tizen 6.5, Chromium 85). Check new JS and CSS features against that engine. `app/js/vendor/qrcode.js` is third-party; do not edit it.
+Tizen 4.0+ (2018 TVs, Chromium 56; the dev TV is a 2018 NU7090). The README measurements come from a 2022 Q60B (Tizen 6.5, Chromium 85). Chromium 56 has no ES modules, so the source runs on the TV only after bundling. esbuild lowers syntax to Chromium 56 but adds no polyfills: check every new web API and CSS feature against Chromium 56. `app/js/vendor/qrcode.js` is third-party; do not edit it.
