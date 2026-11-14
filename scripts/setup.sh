@@ -190,7 +190,7 @@ if "$TIZEN" security-profiles list 2>/dev/null | grep -q "^$PROFILE "; then
   ok "profile '$PROFILE' already exists"
 else
   PW="$(get_env TIZEN_CERT_PASSWORD)"
-  [ -n "$PW" ] || PW=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 24)
+  [ -n "$PW" ] || PW=$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n') # 24 hex chars; od reads exactly 12 bytes, so no SIGPIPE
   set_env TIZEN_CERT_PASSWORD "$PW"
   "$TIZEN" certificate -a "$PROFILE" -p "$PW" -f "$PROFILE" >>"$LOG" 2>&1
   "$TIZEN" security-profiles add -n "$PROFILE" -a "$TIZEN_DATA/keystore/author/$PROFILE.p12" -p "$PW" >>"$LOG" 2>&1
