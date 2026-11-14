@@ -2,13 +2,16 @@
 
 Items for later. None are started.
 
-- [ ] 1. More debug information during playback.
-- [ ] 2. More library view and filter options.
-- [ ] 3. A Plexamp equivalent (music playback).
-- [ ] 4. Explore the Plex API to find its limitations.
-- [ ] 5. Architecture and security review.
-- [ ] 6. Pull requests to upstream (`rfaile313/samsucks`):
-  - [ ] A simplified PR, purely for Tizen 4.
-  - [ ] A separate PR for Docker and the other changes.
-- [ ] 7. UI changes: assets, icons, fonts.
-- [ ] 8. photo library
+- [ ] More debug information during playback.
+- [ ] More library view and filter options.
+- [ ] A Plexamp equivalent (music playback).
+- [ ] Explore the Plex API to find its limitations.
+- [ ] Architecture and security review.
+- [ ] Pull requests to upstream (`rfaile313/samsucks`):
+  - [x] A simplified PR, purely for Tizen 4.
+  - [ ] A separate PR for Docker
+  - [ ] bugfix PR
+- [ ] UI changes: assets, icons, fonts.
+- [ ] photo library
+- [ ] support plex users
+- [ ] support plex content rating limitations
