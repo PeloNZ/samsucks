@@ -89,7 +89,9 @@ ok "Samsung TV extensions"
 
 # --- 2. Find the TV -------------------------------------------------------------
 bold "2/4  Finding your TV"
-if [ "$(uname -s)" = Darwin ]; then
+if [ -n "${HOST_IP:-}" ]; then
+  MY_IP="$HOST_IP"  # set by scripts/dev.sh: in a container, the host's LAN IP
+elif [ "$(uname -s)" = Darwin ]; then
   IFACE=$(route -n get default 2>/dev/null | awk '/interface:/ { print $2 }')
   MY_IP=$(ipconfig getifaddr "${IFACE:-en0}" 2>/dev/null || true)
 else
