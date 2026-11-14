@@ -15,6 +15,8 @@ async function run(cmd) {
   }
   if (cmd.eval) {
     try {
+      // biome-ignore lint/style/noCommaOperator: (0, eval) runs the snippet in global scope.
+      // biome-ignore lint/security/noGlobalEval: dev builds run snippets sent from tools/tveval.sh.
       let result = (0, eval)(cmd.eval);
       if (result && typeof result.then === 'function') result = await result;
       log('eval →', result);

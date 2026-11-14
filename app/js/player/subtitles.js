@@ -17,12 +17,14 @@ function parseSrtOrVtt(text) {
   const cues = [];
   const re = /(\d+):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d+):(\d{2}):(\d{2})[,.](\d{1,3})[^\n]*\n([\s\S]*?)(?:\n\s*\n|$)/g;
   let m;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop.
   while ((m = re.exec(text))) {
     cues.push({ start: ms(m[1], m[2], m[3], m[4]), end: ms(m[5], m[6], m[7], m[8]), text: clean(m[9]) });
   }
   // WebVTT allows mm:ss.ttt without hours.
   if (!cues.length) {
     const short = /(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2})\.(\d{3})[^\n]*\n([\s\S]*?)(?:\n\s*\n|$)/g;
+    // biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop.
     while ((m = short.exec(text))) {
       cues.push({ start: ms(0, m[1], m[2], m[3]), end: ms(0, m[4], m[5], m[6]), text: clean(m[7]) });
     }
