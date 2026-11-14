@@ -37,7 +37,10 @@ export function LibraryScreen(section) {
 
   const type = section.type === 'show' ? 2 : 1;
 
-  const grid = new Grid({
+  // new Grid() renders at once and calls onNeed -> loadPage(0) before this
+  // assignment completes, so loadPage must handle grid === null.
+  let grid = null;
+  grid = new Grid({
     top: 200,
     height: 880,
     total: 0,
@@ -66,7 +69,7 @@ export function LibraryScreen(section) {
 
   async function loadPage(p) {
     if (pages.has(p)) return;
-    if (grid.total && p * PAGE >= grid.total) return;
+    if (grid && grid.total && p * PAGE >= grid.total) return;
     pages.set(p, 'loading');
     const gen = generation;
     try {
