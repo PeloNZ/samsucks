@@ -152,6 +152,11 @@ html.playing .ambience {
 .amb-layer.on {
   opacity: 1;
 }
+/* While a key is held the colors change every step; crossfading two
+   full-screen layers then costs ~40 ms a frame on 2018 (Tizen 4.0) TVs. */
+html.fast .amb-layer {
+  transition: none;
+}
 .ambience.legacy .amb-layer {
   display: none;
 }
