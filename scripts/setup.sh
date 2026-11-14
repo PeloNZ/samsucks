@@ -38,8 +38,13 @@ else
   TMP="$(mktemp -d)"
   curl -fL --progress-bar -o "$TMP/$INSTALLER" "https://download.tizen.org/sdk/Installer/tizen-studio_${TIZEN_VERSION}/$INSTALLER"
   chmod +x "$TMP/$INSTALLER"
-  "$TMP/$INSTALLER" --accept-license "$TIZEN_STUDIO" >/dev/null
+  # On Apple Silicon, macOS kills the arm64e slice of the installer's bundled
+  # unzip; under Rosetta it runs the x86_64 slice instead.
+  if [ "$(uname -sm)" = "Darwin arm64" ]; then arch -x86_64 "$TMP/$INSTALLER" --accept-license "$TIZEN_STUDIO" >/dev/null
+  else "$TMP/$INSTALLER" --accept-license "$TIZEN_STUDIO" >/dev/null; fi
   rm -rf "$TMP"
+  # The installer exits 0 even when it fails.
+  [ -x "$TIZEN" ] || fail "The Tizen installer failed: $TIZEN is missing."
   ok "installed in $TIZEN_STUDIO"
 fi
 
