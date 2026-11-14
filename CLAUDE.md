@@ -15,6 +15,9 @@ Run every script in the Ubuntu amd64 dev container (`compose.yaml`). It matches 
     ./scripts/dev.sh node --test 'test/**/*.test.mjs'                 # unit tests
     ./scripts/dev.sh node --test --test-name-pattern='CueTrack' 'test/**/*.test.mjs'  # one test
     docker compose logs -f devserver           # TV logs from dev builds (also build/tv.log)
+    npm run tizen-skills                       # on the host: install Samsung's tizen-sdk-skills for Claude Code
+
+`npm run tizen-skills` installs Samsung's Tizen skills, agents and hooks into `.claude/` (gitignored; hooks go in `.claude/settings.local.json`), pinned in `tools/install-tizen-skills.sh`. `package.json` holds scripts only; the app has no npm dependencies.
 
 Unit tests use Node's built-in `node:test` and `node:assert` (no npm). They import app modules directly from `app/js`. Modules that touch `document`, `window` or `localStorage` at load need small fakes for those globals in the test.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
-    "ignore": ["build/**", "app/js/vendor/**", ".claude/**", ".idea/**"]
+    "ignore": ["build/**", "vendor/**", "app/js/vendor/**", ".claude/**", ".idea/**"]
   },
   "organizeImports": {
     "enabled": false

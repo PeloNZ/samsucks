@@ -41,3 +41,10 @@ npm-debug.log*
 
 # Promo material (videos, graphics, drafts); final README media goes in docs/media/
 marketing/
+
+# Samsung tizen-sdk-skills for Claude Code: installed by `npm run tizen-skills`
+vendor/
+.claude/skills/tizen-*/
+.claude/agents/tizen-*.md
+.claude/hooks/tizen-sdk-skills/
+.claude/settings.local.json

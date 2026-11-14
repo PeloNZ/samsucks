@@ -1,0 +1,9 @@
+{
+  "name": "samsucks",
+  "private": true,
+  "type": "module",
+  "description": "Scripts only. The app has no npm dependencies.",
+  "scripts": {
+    "tizen-skills": "bash tools/install-tizen-skills.sh"
+  }
+}
