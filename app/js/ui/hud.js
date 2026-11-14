@@ -29,13 +29,28 @@ function tick(now) {
     stats.keyAt = 0;
   }
   if (now - windowStart >= 1000) {
-    const fps = Math.round(frames * 1000 / (now - windowStart));
+    const fps = Math.round((frames * 1000) / (now - windowStart));
     setText(el, fps + ' fps · worst ' + worst.toFixed(0) + 'ms · key ' + stats.latency.toFixed(0) + 'ms');
     // Only report windows where something happened, so idle doesn't drown the log.
     if (maxLatency || fps < 55) {
-      perf('screen=' + screenName() + ' fps=' + fps + ' worst=' + worst.toFixed(0) + ' long=' + longFrames + ' keyMax=' + maxLatency.toFixed(0));
+      perf(
+        'screen=' +
+          screenName() +
+          ' fps=' +
+          fps +
+          ' worst=' +
+          worst.toFixed(0) +
+          ' long=' +
+          longFrames +
+          ' keyMax=' +
+          maxLatency.toFixed(0),
+      );
     }
-    frames = 0; worst = 0; longFrames = 0; maxLatency = 0; windowStart = now;
+    frames = 0;
+    worst = 0;
+    longFrames = 0;
+    maxLatency = 0;
+    windowStart = now;
   }
   requestAnimationFrame(tick);
 }

@@ -5,7 +5,8 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT" || exit 1
-FIX=0; [ "${1:-}" = --fix ] && FIX=1
+FIX=0
+[ "${1:-}" = --fix ] && FIX=1
 STATUS=0
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 check() { "$@" || STATUS=1; }

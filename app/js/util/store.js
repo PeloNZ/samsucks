@@ -14,5 +14,7 @@ export function set(key, value) {
   try {
     if (value === undefined) localStorage.removeItem(PREFIX + key);
     else localStorage.setItem(PREFIX + key, JSON.stringify(value));
-  } catch (e) { /* quota */ }
+  } catch (e) {
+    /* quota */
+  }
 }

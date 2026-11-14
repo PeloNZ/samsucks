@@ -23,13 +23,20 @@ async function verify() {
   try {
     await session.server.get('/identity');
   } catch (e) {
-    if (e.status === 401) { signOut(); goLogin(); return; }
+    if (e.status === 401) {
+      signOut();
+      goLogin();
+      return;
+    }
     warn('saved server unreachable, re-resolving', e.message);
     try {
       await reconnect();
       goHome();
     } catch (err) {
-      if (err.status === 401) { signOut(); goLogin(); }
+      if (err.status === 401) {
+        signOut();
+        goLogin();
+      }
     }
   }
 }

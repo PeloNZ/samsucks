@@ -31,35 +31,39 @@ function flush() {
   if (action && handler) handler(action);
 }
 
-document.addEventListener('keydown', e => {
-  const action = actionFor(e);
-  if (!action) return;
-  // Let text inputs (search) handle their own keys except navigation out.
-  const tag = document.activeElement && document.activeElement.tagName;
-  if (tag === 'INPUT' && action !== 'back' && action !== 'down' && action !== 'up' && action !== 'enter') return;
-  e.preventDefault();
-  stats.keyAt = performance.now();
+document.addEventListener(
+  'keydown',
+  e => {
+    const action = actionFor(e);
+    if (!action) return;
+    // Let text inputs (search) handle their own keys except navigation out.
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' && action !== 'back' && action !== 'down' && action !== 'up' && action !== 'enter') return;
+    e.preventDefault();
+    stats.keyAt = performance.now();
 
-  if (NAV[action]) {
-    const now = performance.now();
-    const held = e.repeat || now - lastNavAt < 140;
-    lastNavAt = now;
-    if (held) {
-      setFast(true);
-      clearTimeout(fastTimer);
-      fastTimer = setTimeout(() => setFast(false), 220);
+    if (NAV[action]) {
+      const now = performance.now();
+      const held = e.repeat || now - lastNavAt < 140;
+      lastNavAt = now;
+      if (held) {
+        setFast(true);
+        clearTimeout(fastTimer);
+        fastTimer = setTimeout(() => setFast(false), 220);
+      }
+      pending = action;
+      if (!scheduled) {
+        scheduled = true;
+        requestAnimationFrame(flush);
+        // rAF pauses when the page is occluded; never let input stall on it.
+        setTimeout(flush, 50);
+      }
+      return;
     }
-    pending = action;
-    if (!scheduled) {
-      scheduled = true;
-      requestAnimationFrame(flush);
-      // rAF pauses when the page is occluded; never let input stall on it.
-      setTimeout(flush, 50);
-    }
-    return;
-  }
-  if (handler) handler(action);
-}, true);
+    if (handler) handler(action);
+  },
+  true,
+);
 
 // Feed an action through the same path as a real key press (dev remote).
 export function inject(action) {

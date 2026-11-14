@@ -7,7 +7,10 @@ import { SearchScreen } from './screens/search.js';
 import { SettingsScreen } from './screens/settings.js';
 
 export function openItem(item) {
-  if (item.type === 'clip') { playItem(item); return; }
+  if (item.type === 'clip') {
+    playItem(item);
+    return;
+  }
   router.push(DetailScreen(item));
 }
 

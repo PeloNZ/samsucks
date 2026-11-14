@@ -16,12 +16,40 @@ const NAV_PAD = 80; // wider than the 64px edge fade in app.css
 
 function slimHub(hub) {
   // Keep the cache small: only fields the home screen renders.
-  const keep = ['ratingKey', 'key', 'type', 'title', 'grandparentTitle', 'parentTitle', 'year', 'thumb', 'art',
-    'grandparentThumb', 'grandparentArt', 'parentThumb', 'index', 'parentIndex', 'duration', 'viewOffset',
-    'viewCount', 'leafCount', 'viewedLeafCount', 'childCount', 'contentRating', 'audienceRating', 'summary',
-    'originallyAvailableAt', 'UltraBlurColors', 'grandparentRatingKey', 'parentRatingKey', 'Image'];
+  const keep = [
+    'ratingKey',
+    'key',
+    'type',
+    'title',
+    'grandparentTitle',
+    'parentTitle',
+    'year',
+    'thumb',
+    'art',
+    'grandparentThumb',
+    'grandparentArt',
+    'parentThumb',
+    'index',
+    'parentIndex',
+    'duration',
+    'viewOffset',
+    'viewCount',
+    'leafCount',
+    'viewedLeafCount',
+    'childCount',
+    'contentRating',
+    'audienceRating',
+    'summary',
+    'originallyAvailableAt',
+    'UltraBlurColors',
+    'grandparentRatingKey',
+    'parentRatingKey',
+    'Image',
+  ];
   return {
-    hubIdentifier: hub.hubIdentifier, title: hub.title, type: hub.type,
+    hubIdentifier: hub.hubIdentifier,
+    title: hub.title,
+    type: hub.type,
     Metadata: hub.Metadata.map(m => {
       const o = {};
       for (const k of keep) if (m[k] !== undefined) o[k] = m[k];
@@ -82,9 +110,10 @@ export function HomeScreen() {
 
   function buildNav(sections) {
     navTrack.innerHTML = '';
-    navItems = [{ label: 'Home', id: 'home' }]
-      .concat(sections.map(s => ({ label: s.title, id: 'section', section: s })))
-      .concat([{ label: 'Search', id: 'search', icon: icons.search }, { label: 'Settings', id: 'settings', icon: icons.gear }]);
+    navItems = [{ label: 'Home', id: 'home' }].concat(sections.map(s => ({ label: s.title, id: 'section', section: s }))).concat([
+      { label: 'Search', id: 'search', icon: icons.search },
+      { label: 'Settings', id: 'settings', icon: icons.gear },
+    ]);
     navIndex = Math.min(navIndex, navItems.length - 1);
     navItems.forEach((n, i) => {
       if (n.icon && !navItems[i - 1].icon) h('i', 'nav-sep', navTrack);
@@ -108,7 +137,7 @@ export function HomeScreen() {
       else if (right + NAV_PAD > navScroll + room) navScroll = right + NAV_PAD - room;
     }
     navScroll = Math.round(Math.max(0, Math.min(max, navScroll)));
-    setTransform(navTrack, 'translateX(' + (-navScroll) + 'px)');
+    setTransform(navTrack, 'translateX(' + -navScroll + 'px)');
     toggleClass(navEl, 'more-left', navScroll > 0);
     toggleClass(navEl, 'more-right', navScroll < max - 1);
   }
@@ -164,7 +193,7 @@ export function HomeScreen() {
       r.setActive(zone === 'rows' && i === rowIndex);
       toggleClass(r.el, 'above', i < rowIndex);
     });
-    setTransform(track, 'translateY(' + (-(offsets[rowIndex] || 0)) + 'px)');
+    setTransform(track, 'translateY(' + -(offsets[rowIndex] || 0) + 'px)');
   }
 
   function setHubs(hubs) {
@@ -177,8 +206,11 @@ export function HomeScreen() {
       rows = hubs.map(hb => {
         const wide = /continue|ondeck/i.test(hb.hubIdentifier);
         const row = new Row({
-          title: hb.title, kind: wide ? 'wide' : 'poster', items: hb.Metadata,
-          onFocus: onFocusItem, onSelect: item => openItem(item),
+          title: hb.title,
+          kind: wide ? 'wide' : 'poster',
+          items: hb.Metadata,
+          onFocus: onFocusItem,
+          onSelect: item => openItem(item),
         });
         row.hubId = hb.hubIdentifier;
         track.appendChild(row.el);
@@ -207,7 +239,7 @@ export function HomeScreen() {
       store.set('homeCache', { server: server.id, sections, hubs: hubs.map(slimHub) });
     } catch (e) {
       error('home load failed', e);
-      if (!rows.length) setText(empty, 'Couldn\'t load from ' + server.name + '. Press OK to retry.');
+      if (!rows.length) setText(empty, "Couldn't load from " + server.name + '. Press OK to retry.');
     }
   }
 
@@ -239,34 +271,81 @@ export function HomeScreen() {
     },
     onKey(action) {
       if (zone === 'nav') {
-        if (action === 'left') { navIndex = Math.max(0, navIndex - 1); renderNav(); return true; }
-        if (action === 'right') { navIndex = Math.min(navItems.length - 1, navIndex + 1); renderNav(); return true; }
-        if (action === 'down' && rows.length) { zone = 'rows'; renderNav(); renderRows(); return true; }
-        if (action === 'enter') { activateNav(navItems[navIndex]); return true; }
+        if (action === 'left') {
+          navIndex = Math.max(0, navIndex - 1);
+          renderNav();
+          return true;
+        }
+        if (action === 'right') {
+          navIndex = Math.min(navItems.length - 1, navIndex + 1);
+          renderNav();
+          return true;
+        }
+        if (action === 'down' && rows.length) {
+          zone = 'rows';
+          renderNav();
+          renderRows();
+          return true;
+        }
+        if (action === 'enter') {
+          activateNav(navItems[navIndex]);
+          return true;
+        }
         if (action === 'back') return false;
         return true;
       }
       const row = rows[rowIndex];
       if (!row) {
-        if (action === 'up') { zone = 'nav'; renderNav(); return true; }
-        if (action === 'enter') { load(); return true; }
+        if (action === 'up') {
+          zone = 'nav';
+          renderNav();
+          return true;
+        }
+        if (action === 'enter') {
+          load();
+          return true;
+        }
         return false;
       }
       switch (action) {
-        case 'left': row.move(-1); return true;
-        case 'right': row.move(1); return true;
-        case 'up':
-          if (rowIndex === 0) { zone = 'nav'; renderNav(); renderRows(); return true; }
-          rowIndex--; renderRows(); onFocusItem(rows[rowIndex].current()); return true;
-        case 'down':
-          if (rowIndex < rows.length - 1) { rowIndex++; renderRows(); onFocusItem(rows[rowIndex].current()); }
+        case 'left':
+          row.move(-1);
           return true;
-        case 'enter': row.select(); return true;
-        case 'play': case 'playpause': if (row.current()) playItem(row.current()); return true;
+        case 'right':
+          row.move(1);
+          return true;
+        case 'up':
+          if (rowIndex === 0) {
+            zone = 'nav';
+            renderNav();
+            renderRows();
+            return true;
+          }
+          rowIndex--;
+          renderRows();
+          onFocusItem(rows[rowIndex].current());
+          return true;
+        case 'down':
+          if (rowIndex < rows.length - 1) {
+            rowIndex++;
+            renderRows();
+            onFocusItem(rows[rowIndex].current());
+          }
+          return true;
+        case 'enter':
+          row.select();
+          return true;
+        case 'play':
+        case 'playpause':
+          if (row.current()) playItem(row.current());
+          return true;
         case 'back':
           // Back from deep in the rows returns to the top first.
           if (rowIndex > 0 || row.index > 0) {
-            rowIndex = 0; rows.forEach(r => r.focusIndex(0)); renderRows(); onFocusItem(rows[0].current());
+            rowIndex = 0;
+            rows.forEach(r => r.focusIndex(0));
+            renderRows();
+            onFocusItem(rows[0].current());
             return true;
           }
           return false;

@@ -6,7 +6,20 @@ import { h, setTransform } from '../util/dom.js';
 import { createTile, fillTile, KINDS } from './tile.js';
 
 export class Grid {
-  constructor({ cols = 7, kind = 'grid', gapX = 41, gapY = 28, captionH = 70, top = 0, height = 1080, getItem, total = 0, onFocus, onSelect, onNeed }) {
+  constructor({
+    cols = 7,
+    kind = 'grid',
+    gapX = 41,
+    gapY = 28,
+    captionH = 70,
+    top = 0,
+    height = 1080,
+    getItem,
+    total = 0,
+    onFocus,
+    onSelect,
+    onNeed,
+  }) {
     this.cols = cols;
     this.size = KINDS[kind];
     this.stepX = this.size.w + gapX;
@@ -24,8 +37,8 @@ export class Grid {
     this.el.style.height = height + 'px';
     this.track = h('div', 'grid-track', this.el);
     this.ring = h('div', 'ring on', this.track);
-    this.ring.style.width = (this.size.w + 16) + 'px';
-    this.ring.style.height = (this.size.h + 16) + 'px';
+    this.ring.style.width = this.size.w + 16 + 'px';
+    this.ring.style.height = this.size.h + 16 + 'px';
 
     this.visibleRows = Math.ceil(height / this.stepY) + 1;
     this.poolRows = this.visibleRows + 2;
@@ -125,7 +138,7 @@ export class Grid {
     }
     if (this.onNeed) this.onNeed(firstRow * this.cols, lastRow * this.cols + this.cols * 4);
 
-    setTransform(this.track, 'translateY(' + (-this.scrollRow * this.stepY) + 'px)');
+    setTransform(this.track, 'translateY(' + -this.scrollRow * this.stepY + 'px)');
     const col = this.index % this.cols;
     setTransform(this.ring, 'translate(' + (col * this.stepX - 8) + 'px,' + (focusRow * this.stepY - 8) + 'px)');
   }

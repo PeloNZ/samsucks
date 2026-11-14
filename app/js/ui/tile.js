@@ -52,8 +52,7 @@ function titleFor(item, kind) {
 
 function subFor(item, kind) {
   if (item.type === 'episode') {
-    return kind === 'episode' ? episodeLabel(item).replace(' · ', '') + '  ' + item.title
-      : episodeLabel(item) + '  ' + item.title;
+    return kind === 'episode' ? episodeLabel(item).replace(' · ', '') + '  ' + item.title : episodeLabel(item) + '  ' + item.title;
   }
   if (item.type === 'season') return item.leafCount ? item.leafCount + ' episodes' : '';
   return item.year || '';
@@ -67,7 +66,10 @@ export function fillTile(tile, item) {
     setText(tile.ph, '');
     show(tile.bar, false);
     show(tile.badge, false);
-    if (tile.cap) { setText(tile.cap, ''); setText(tile.sub, ''); }
+    if (tile.cap) {
+      setText(tile.cap, '');
+      setText(tile.sub, '');
+    }
     return;
   }
   const kind = tile.kind;
@@ -95,6 +97,11 @@ export function fillTile(tile, item) {
 
   if (tile.cap) {
     setText(tile.cap, kind === 'episode' ? item.title : titleFor(item, kind));
-    setText(tile.sub, kind === 'episode' ? episodeLabel(item) + (item.duration ? '  ·  ' + Math.round(item.duration / 60000) + 'm' : '') : subFor(item, kind));
+    setText(
+      tile.sub,
+      kind === 'episode'
+        ? episodeLabel(item) + (item.duration ? '  ·  ' + Math.round(item.duration / 60000) + 'm' : '')
+        : subFor(item, kind),
+    );
   }
 }

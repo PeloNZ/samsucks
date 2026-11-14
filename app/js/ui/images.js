@@ -42,8 +42,15 @@ function pump() {
       }
       pump();
     };
-    if (loader.decode) loader.decode().then(() => done(true), () => done(false));
-    else { loader.onload = () => done(true); loader.onerror = () => done(false); }
+    if (loader.decode)
+      loader.decode().then(
+        () => done(true),
+        () => done(false),
+      );
+    else {
+      loader.onload = () => done(true);
+      loader.onerror = () => done(false);
+    }
   }
 }
 

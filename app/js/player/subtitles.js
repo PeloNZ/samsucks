@@ -38,7 +38,10 @@ function parseAss(text) {
   let textIndex = 9;
   for (const line of lines) {
     if (/^Format:/i.test(line) && /Text/i.test(line)) {
-      const fields = line.slice(7).split(',').map(f => f.trim().toLowerCase());
+      const fields = line
+        .slice(7)
+        .split(',')
+        .map(f => f.trim().toLowerCase());
       textIndex = fields.indexOf('text');
     }
     if (!/^Dialogue:/i.test(line)) continue;
@@ -75,7 +78,8 @@ export class CueTrack {
       let hi = cues.length - 1;
       while (lo < hi) {
         const mid = (lo + hi + 1) >> 1;
-        if (cues[mid].start <= t) lo = mid; else hi = mid - 1;
+        if (cues[mid].start <= t) lo = mid;
+        else hi = mid - 1;
       }
       i = lo;
     }

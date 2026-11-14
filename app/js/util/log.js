@@ -5,11 +5,19 @@ const queue = [];
 let timer = 0;
 
 function stringify(args) {
-  return args.map(a => {
-    if (a instanceof Error) return a.stack || a.message;
-    if (typeof a === 'object') { try { return JSON.stringify(a); } catch (e) { return String(a); } }
-    return String(a);
-  }).join(' ');
+  return args
+    .map(a => {
+      if (a instanceof Error) return a.stack || a.message;
+      if (typeof a === 'object') {
+        try {
+          return JSON.stringify(a);
+        } catch (e) {
+          return String(a);
+        }
+      }
+      return String(a);
+    })
+    .join(' ');
 }
 
 function flush() {
@@ -18,7 +26,9 @@ function flush() {
   const body = JSON.stringify(queue.splice(0));
   try {
     fetch('http://' + DEV_HOST + '/log', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
-  } catch (e) { /* devserver not running */ }
+  } catch (e) {
+    /* devserver not running */
+  }
 }
 
 function emit(level, args) {
@@ -27,9 +37,18 @@ function emit(level, args) {
   if (!timer) timer = setTimeout(flush, 400);
 }
 
-export const log = (...a) => { console.log(...a); emit('log', a); };
-export const warn = (...a) => { console.warn(...a); emit('warn', a); };
-export const error = (...a) => { console.error(...a); emit('error', a); };
+export const log = (...a) => {
+  console.log(...a);
+  emit('log', a);
+};
+export const warn = (...a) => {
+  console.warn(...a);
+  emit('warn', a);
+};
+export const error = (...a) => {
+  console.error(...a);
+  emit('error', a);
+};
 export const perf = (...a) => emit('perf', a);
 
 if (DEV) {

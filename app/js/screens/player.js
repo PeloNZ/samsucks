@@ -27,7 +27,7 @@ const SEEK_COMMIT_MS = 900;
 const TIMELINE_MS = 10000;
 
 function streamsOf(part, type) {
-  return (part && part.Stream || []).filter(s => s.streamType === type);
+  return ((part && part.Stream) || []).filter(s => s.streamType === type);
 }
 
 function isEmbeddedText(sub) {
@@ -40,15 +40,15 @@ function isSidecarText(sub) {
 }
 
 function subtitleLabel(s) {
-  const title = s.displayTitle && s.displayTitle !== 'Unknown' ? s.displayTitle : (s.language || '');
+  const title = s.displayTitle && s.displayTitle !== 'Unknown' ? s.displayTitle : s.language || '';
   const kind = (s.codec || '').toUpperCase() + (s.key ? ' · external' : '');
   return title ? title + (s.key ? ' · external' : '') : kind || 'Subtitle';
 }
 
 function cleanSubtitle(text) {
   return String(text || '')
-    .replace(/\{\\[^}]*\}/g, '')        // ASS override tags
-    .replace(/<[^>]+>/g, '')            // <i>, <font> ...
+    .replace(/\{\\[^}]*\}/g, '') // ASS override tags
+    .replace(/<[^>]+>/g, '') // <i>, <font> ...
     .replace(/\\N/g, '\n');
 }
 
@@ -85,7 +85,7 @@ export function PlayerScreen(initial, { offset = null } = {}) {
   let part = null;
   let mode = 'direct';
   let triedFallback = false;
-  let base = 0;             // HLS restarts at an offset; AVPlay time is relative to it
+  let base = 0; // HLS restarts at an offset; AVPlay time is relative to it
   let position = offset || 0;
   let duration = initial.duration || 0;
   let paused = false;
@@ -114,9 +114,15 @@ export function PlayerScreen(initial, { offset = null } = {}) {
       position = base + ms;
       if (seekTarget == null) renderProgress(position);
     },
-    onBuffering(on) { toggleClass(spinner, 'on', on); },
-    onEnd() { finished(); },
-    onError(msg) { failed(msg); },
+    onBuffering(on) {
+      toggleClass(spinner, 'on', on);
+    },
+    onEnd() {
+      finished();
+    },
+    onError(msg) {
+      failed(msg);
+    },
     onSubtitle(text, ms) {
       clearTimeout(subTimer);
       setText(subs, cleanSubtitle(text));
@@ -188,8 +194,8 @@ export function PlayerScreen(initial, { offset = null } = {}) {
   // --- Opening ----------------------------------------------------------
 
   function decideMode() {
-    const directOk = DIRECT.container[media.container] && DIRECT.video[media.videoCodec] &&
-      (!audioStream || DIRECT.audio[audioStream.codec]);
+    const directOk =
+      DIRECT.container[media.container] && DIRECT.video[media.videoCodec] && (!audioStream || DIRECT.audio[audioStream.codec]);
     const subsOk = !subStream || isEmbeddedText(subStream) || isSidecarText(subStream);
     return directOk && subsOk ? 'direct' : 'hls';
   }
@@ -208,14 +214,16 @@ export function PlayerScreen(initial, { offset = null } = {}) {
       // Burn in only what we can't draw ourselves (image subs, embedded text).
       const burn = subStream && !isSidecarText(subStream);
       url = server.transcodeUrl(item, {
-        session: playSession, offsetMs: atMs,
+        session: playSession,
+        offsetMs: atMs,
         audioStreamID: audioStream && audioStream.id,
         subtitleStreamID: burn ? subStream.id : undefined,
       });
       // PMS 1.42+ rejects start.m3u8 unless a decision was made for the session first.
       const decision = await request(url.replace('/start.m3u8', '/decision'));
       const mc = decision.MediaContainer || {};
-      if (mc.generalDecisionCode && mc.generalDecisionCode >= 2000) throw new Error(mc.generalDecisionText || 'Server refused to convert this file');
+      if (mc.generalDecisionCode && mc.generalDecisionCode >= 2000)
+        throw new Error(mc.generalDecisionText || 'Server refused to convert this file');
     }
     log('play', mode, item.title, media.container + '/' + media.videoCodec + '/' + (audioStream && audioStream.codec), 'at', clock(atMs));
     player.open(url, { uhd: media.videoResolution === '4k' && supports4K() });
@@ -387,9 +395,16 @@ export function PlayerScreen(initial, { offset = null } = {}) {
     const texts = streamsOf(part, 3);
     panelLists = [
       audios.map(s => ({ label: s.displayTitle || s.language || 'Track', stream: s, on: s === audioStream })),
-      [{ label: 'Off', stream: null, on: !subStream }].concat(texts.map(s => ({ label: subtitleLabel(s), stream: s, on: s === subStream }))),
+      [{ label: 'Off', stream: null, on: !subStream }].concat(
+        texts.map(s => ({ label: subtitleLabel(s), stream: s, on: s === subStream })),
+      ),
     ];
-    panelIndex = panelLists.map(l => Math.max(0, l.findIndex(x => x.on)));
+    panelIndex = panelLists.map(l =>
+      Math.max(
+        0,
+        l.findIndex(x => x.on),
+      ),
+    );
     panelCol = 0;
     renderPanel();
     panel.classList.remove('hidden');
@@ -435,7 +450,10 @@ export function PlayerScreen(initial, { offset = null } = {}) {
   }
 
   function panelKey(action) {
-    if (action === 'back' || action === 'up' && panelIndex[panelCol] === 0) { panel.classList.add('hidden'); return true; }
+    if (action === 'back' || (action === 'up' && panelIndex[panelCol] === 0)) {
+      panel.classList.add('hidden');
+      return true;
+    }
     if (action === 'left' || action === 'right') panelCol = action === 'left' ? 0 : 1;
     if (action === 'up') panelIndex[panelCol]--;
     if (action === 'down') panelIndex[panelCol] = Math.min(panelLists[panelCol].length - 1, panelIndex[panelCol] + 1);
@@ -466,10 +484,20 @@ export function PlayerScreen(initial, { offset = null } = {}) {
     report('stopped');
     clearInterval(timelineTimer);
     player.close();
-    if (item.type !== 'episode') { exit(); return; }
-    try { nextItem = await nextEpisode(); } catch (e) { nextItem = null; }
+    if (item.type !== 'episode') {
+      exit();
+      return;
+    }
+    try {
+      nextItem = await nextEpisode();
+    } catch (e) {
+      nextItem = null;
+    }
     if (!alive) return;
-    if (!nextItem) { exit(); return; }
+    if (!nextItem) {
+      exit();
+      return;
+    }
     let left = 10;
     upnext.classList.remove('hidden');
     const render = () => {
@@ -531,8 +559,14 @@ export function PlayerScreen(initial, { offset = null } = {}) {
     },
     onKey(action) {
       if (!upnext.classList.contains('hidden')) {
-        if (action === 'enter') { playNext(); return true; }
-        if (action === 'back' || action === 'stop') { exit(); return true; }
+        if (action === 'enter') {
+          playNext();
+          return true;
+        }
+        if (action === 'back' || action === 'stop') {
+          exit();
+          return true;
+        }
         return true;
       }
       if (!panel.classList.contains('hidden')) return panelKey(action);
@@ -542,17 +576,46 @@ export function PlayerScreen(initial, { offset = null } = {}) {
           else if (el.classList.contains('osd-on') || paused) togglePause();
           else showOsd();
           return true;
-        case 'playpause': if (seekTarget != null) commitSeek(); else togglePause(); return true;
-        case 'play': if (paused) togglePause(); return true;
-        case 'pause': if (!paused) togglePause(); return true;
-        case 'left': case 'rw': seekBy(-1); return true;
-        case 'right': case 'ff': seekBy(1); return true;
-        case 'up': case 'info': showOsd(); return true;
-        case 'down': if (part) openPanel(); return true;
-        case 'stop': exit(); return true;
+        case 'playpause':
+          if (seekTarget != null) commitSeek();
+          else togglePause();
+          return true;
+        case 'play':
+          if (paused) togglePause();
+          return true;
+        case 'pause':
+          if (!paused) togglePause();
+          return true;
+        case 'left':
+        case 'rw':
+          seekBy(-1);
+          return true;
+        case 'right':
+        case 'ff':
+          seekBy(1);
+          return true;
+        case 'up':
+        case 'info':
+          showOsd();
+          return true;
+        case 'down':
+          if (part) openPanel();
+          return true;
+        case 'stop':
+          exit();
+          return true;
         case 'back':
-          if (seekTarget != null) { seekTarget = null; toggleClass(el, 'seeking', false); renderProgress(position); showOsd(); return true; }
-          if (el.classList.contains('osd-on') && !paused) { hideOsd(); return true; }
+          if (seekTarget != null) {
+            seekTarget = null;
+            toggleClass(el, 'seeking', false);
+            renderProgress(position);
+            showOsd();
+            return true;
+          }
+          if (el.classList.contains('osd-on') && !paused) {
+            hideOsd();
+            return true;
+          }
           exit();
           return true;
       }

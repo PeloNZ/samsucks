@@ -30,15 +30,17 @@ export function LibraryScreen(section) {
   hint.innerHTML = '<i class="key-yellow"></i> Sort &nbsp;&nbsp; CH ▲▼ Jump';
 
   let sortIndex = 0;
-  let pages = new Map();     // page -> 'loading' | true
+  let pages = new Map(); // page -> 'loading' | true
   let items = [];
-  let letters = [];          // [{ title: 'A', start: 0 }]
+  let letters = []; // [{ title: 'A', start: 0 }]
   let generation = 0;
 
   const type = section.type === 'show' ? 2 : 1;
 
   const grid = new Grid({
-    top: 200, height: 880, total: 0,
+    top: 200,
+    height: 880,
+    total: 0,
     getItem: i => items[i],
     onFocus: (item, index) => {
       // Warm posters for the row just past the recycled pool.
@@ -48,7 +50,10 @@ export function LibraryScreen(section) {
           if (items[i]) prefetch(session.server.image(items[i].thumb, 216, 324));
         }
       }
-      if (!item) { setText(focusInfo, ''); return; }
+      if (!item) {
+        setText(focusInfo, '');
+        return;
+      }
       setText(focusInfo, item.title + '   ' + metaLine(item));
       ambience.set(item.UltraBlurColors);
     },
@@ -67,7 +72,9 @@ export function LibraryScreen(section) {
     try {
       const res = await session.server.items(section.key, p * PAGE, PAGE, { sort: SORTS[sortIndex].id, type });
       if (gen !== generation) return;
-      res.items.forEach((it, i) => { items[p * PAGE + i] = it; });
+      res.items.forEach((it, i) => {
+        items[p * PAGE + i] = it;
+      });
       pages.set(p, true);
       if (grid.total !== res.total) {
         grid.setTotal(res.total);
@@ -93,7 +100,9 @@ export function LibraryScreen(section) {
         start += d.size;
         return l;
       });
-    } catch (e) { /* letter jump just won't work */ }
+    } catch (e) {
+      /* letter jump just won't work */
+    }
   }
 
   function reload() {
@@ -124,20 +133,45 @@ export function LibraryScreen(section) {
   return {
     el,
     name: 'library',
-    onShow() { ambience.restore(); },
+    onShow() {
+      ambience.restore();
+    },
     onKey(action) {
       switch (action) {
-        case 'left': grid.move(-1, 0); return true;
-        case 'right': grid.move(1, 0); return true;
-        case 'up': grid.move(0, -1); return true;
-        case 'down': grid.move(0, 1); return true;
-        case 'pageup': jump(-1); return true;
-        case 'pagedown': jump(1); return true;
-        case 'enter': grid.select(); return true;
-        case 'play': case 'playpause': if (grid.current()) playItem(grid.current()); return true;
-        case 'yellow': sortIndex = (sortIndex + 1) % SORTS.length; reload(); return true;
+        case 'left':
+          grid.move(-1, 0);
+          return true;
+        case 'right':
+          grid.move(1, 0);
+          return true;
+        case 'up':
+          grid.move(0, -1);
+          return true;
+        case 'down':
+          grid.move(0, 1);
+          return true;
+        case 'pageup':
+          jump(-1);
+          return true;
+        case 'pagedown':
+          jump(1);
+          return true;
+        case 'enter':
+          grid.select();
+          return true;
+        case 'play':
+        case 'playpause':
+          if (grid.current()) playItem(grid.current());
+          return true;
+        case 'yellow':
+          sortIndex = (sortIndex + 1) % SORTS.length;
+          reload();
+          return true;
         case 'back':
-          if (grid.index > grid.cols * 2) { grid.focusIndex(0); return true; }
+          if (grid.index > grid.cols * 2) {
+            grid.focusIndex(0);
+            return true;
+          }
           return false;
       }
       return false;

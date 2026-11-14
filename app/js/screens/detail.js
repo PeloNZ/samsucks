@@ -52,15 +52,26 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
       title.style.display = '';
       setText(title, showTitle);
     }
-    setText(sub, item.type === 'episode' ? episodeLabel(item) + '   ' + item.title : (item.tagline || ''));
+    setText(sub, item.type === 'episode' ? episodeLabel(item) + '   ' + item.title : item.tagline || '');
     setText(meta, metaLine(item));
     const genres = (item.Genre || []).slice(0, 3).map(g => g.tag);
-    const people = (item.Director || []).slice(0, 1).map(d => 'Directed by ' + d.tag)
-      .concat((item.Role || []).length ? ['Starring ' + item.Role.slice(0, 3).map(r => r.tag).join(', ')] : []);
+    const people = (item.Director || [])
+      .slice(0, 1)
+      .map(d => 'Directed by ' + d.tag)
+      .concat(
+        (item.Role || []).length
+          ? [
+              'Starring ' +
+                item.Role.slice(0, 3)
+                  .map(r => r.tag)
+                  .join(', '),
+            ]
+          : [],
+      );
     setText(tags, genres.concat(people).join('   ·   '));
     setText(summary, item.summary || '');
     ambience.set(item.UltraBlurColors);
-    const artPath = item.type === 'episode' ? (item.grandparentArt || item.art) : item.art;
+    const artPath = item.type === 'episode' ? item.grandparentArt || item.art : item.art;
     art.set(server.image(artPath, 1920, 1080));
   }
 
@@ -95,7 +106,9 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
     const watched = isShowLike() ? item.viewedLeafCount >= item.leafCount : !!item.viewCount;
     add(watched ? icons.check : icons.uncheck, watched ? 'Watched' : 'Mark watched', toggleWatched);
     if (item.type === 'episode' && item.grandparentRatingKey) {
-      add(icons.tv, 'Go to show', () => router.push(DetailScreen({ ratingKey: item.grandparentRatingKey, type: 'show', title: item.grandparentTitle })));
+      add(icons.tv, 'Go to show', () =>
+        router.push(DetailScreen({ ratingKey: item.grandparentRatingKey, type: 'show', title: item.grandparentTitle })),
+      );
     }
     buttonIndex = Math.min(buttonIndex, buttons.length - 1);
     renderFocus();
@@ -103,7 +116,10 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
 
   function renderSeasons() {
     seasonsEl.innerHTML = '';
-    seasons.forEach(s => { s.el = h('div', 'pill', seasonsEl); s.el.textContent = s.title; });
+    seasons.forEach(s => {
+      s.el = h('div', 'pill', seasonsEl);
+      s.el.textContent = s.title;
+    });
     renderFocus();
   }
 
@@ -114,7 +130,7 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
       toggleClass(s.el, 'current', i === seasonIndex);
     });
     if (episodes) episodes.row.setActive(zone === 'episodes');
-    setTransform(body, zone === 'buttons' ? 'translateY(0)' : 'translateY(' + (-SHIFT) + 'px)');
+    setTransform(body, zone === 'buttons' ? 'translateY(0)' : 'translateY(' + -SHIFT + 'px)');
     toggleClass(el, 'shifted', zone !== 'buttons');
   }
 
@@ -123,7 +139,9 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
     if (!alive) return;
     if (!episodes) {
       const row = new Row({
-        kind: 'episode', caption: true, items: kids,
+        kind: 'episode',
+        caption: true,
+        items: kids,
         onSelect: ep => playItem(ep, { offset: ep.viewOffset || 0 }),
       });
       episodesWrap.appendChild(row.el);
@@ -142,7 +160,10 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
     try {
       let key = item.ratingKey;
       let preferSeason = null;
-      if (item.type === 'season') { preferSeason = item.ratingKey; key = item.parentRatingKey; }
+      if (item.type === 'season') {
+        preferSeason = item.ratingKey;
+        key = item.parentRatingKey;
+      }
       const full = await session.server.metadata(key);
       if (!alive || !full) return;
       item = full;
@@ -152,7 +173,7 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
         if (!alive) return;
         const deckSeason = item.onDeck ? seasons.findIndex(s => s.ratingKey === item.onDeck.parentRatingKey) : -1;
         const pref = preferSeason ? seasons.findIndex(s => s.ratingKey === preferSeason) : -1;
-        seasonIndex = pref >= 0 ? pref : (deckSeason >= 0 ? deckSeason : 0);
+        seasonIndex = pref >= 0 ? pref : deckSeason >= 0 ? deckSeason : 0;
         renderSeasons();
         if (seasons[seasonIndex]) await loadEpisodes(seasons[seasonIndex]);
       }
@@ -164,7 +185,7 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
       }
     } catch (e) {
       error('detail load failed', e);
-      setText(summary, 'Couldn\'t load details.');
+      setText(summary, "Couldn't load details.");
     }
   }
 
@@ -208,17 +229,34 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
       shown = true;
     },
     onKey(action) {
-      if (action === 'up') { moveZone(-1); return true; }
-      if (action === 'down') { moveZone(1); return true; }
+      if (action === 'up') {
+        moveZone(-1);
+        return true;
+      }
+      if (action === 'down') {
+        moveZone(1);
+        return true;
+      }
       if (action === 'play' || action === 'playpause') {
         const t = zone === 'episodes' ? episodes.row.current() : target();
         if (t) playItem(t, { offset: t.viewOffset || 0 });
         return true;
       }
       if (zone === 'buttons') {
-        if (action === 'left') { buttonIndex = Math.max(0, buttonIndex - 1); renderFocus(); return true; }
-        if (action === 'right') { buttonIndex = Math.min(buttons.length - 1, buttonIndex + 1); renderFocus(); return true; }
-        if (action === 'enter' && buttons[buttonIndex]) { buttons[buttonIndex].run(); return true; }
+        if (action === 'left') {
+          buttonIndex = Math.max(0, buttonIndex - 1);
+          renderFocus();
+          return true;
+        }
+        if (action === 'right') {
+          buttonIndex = Math.min(buttons.length - 1, buttonIndex + 1);
+          renderFocus();
+          return true;
+        }
+        if (action === 'enter' && buttons[buttonIndex]) {
+          buttons[buttonIndex].run();
+          return true;
+        }
       } else if (zone === 'seasons') {
         if (action === 'left' || action === 'right') {
           const next = seasonIndex + (action === 'right' ? 1 : -1);
@@ -229,16 +267,37 @@ export function DetailScreen(initial, { autoplay = false } = {}) {
           }
           return true;
         }
-        if (action === 'enter') { moveZone(1); return true; }
+        if (action === 'enter') {
+          moveZone(1);
+          return true;
+        }
       } else if (zone === 'episodes') {
-        if (action === 'left') { episodes.row.move(-1); return true; }
-        if (action === 'right') { episodes.row.move(1); return true; }
-        if (action === 'enter') { episodes.row.select(); return true; }
-        if (action === 'info') { router.push(DetailScreen(episodes.row.current())); return true; }
+        if (action === 'left') {
+          episodes.row.move(-1);
+          return true;
+        }
+        if (action === 'right') {
+          episodes.row.move(1);
+          return true;
+        }
+        if (action === 'enter') {
+          episodes.row.select();
+          return true;
+        }
+        if (action === 'info') {
+          router.push(DetailScreen(episodes.row.current()));
+          return true;
+        }
       }
-      if (action === 'back' && zone !== 'buttons') { zone = 'buttons'; renderFocus(); return true; }
+      if (action === 'back' && zone !== 'buttons') {
+        zone = 'buttons';
+        renderFocus();
+        return true;
+      }
       return false;
     },
-    destroy() { alive = false; },
+    destroy() {
+      alive = false;
+    },
   };
 }

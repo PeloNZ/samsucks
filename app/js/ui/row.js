@@ -6,7 +6,7 @@ import { createTile, fillTile, KINDS } from './tile.js';
 
 const GAP = 28;
 const LEFT = 96;
-const BEHIND = 2;   // tiles kept to the left of focus (one is peeking on screen)
+const BEHIND = 2; // tiles kept to the left of focus (one is peeking on screen)
 
 export class Row {
   constructor({ title, kind = 'poster', items = [], caption = false, onFocus, onSelect }) {
@@ -26,12 +26,12 @@ export class Row {
     this.track = h('div', 'row-track', clip);
     this.track.style.left = LEFT + 'px';
     this.ring = h('div', 'ring', clip);
-    this.ring.style.left = (LEFT - 8) + 'px';
-    this.ring.style.width = (this.size.w + 16) + 'px';
-    this.ring.style.height = (this.size.h + 16) + 'px';
+    this.ring.style.left = LEFT - 8 + 'px';
+    this.ring.style.width = this.size.w + 16 + 'px';
+    this.ring.style.height = this.size.h + 16 + 'px';
 
     this.captionH = caption ? 70 : 0;
-    clip.style.height = (this.size.h + this.captionH + 24) + 'px';
+    clip.style.height = this.size.h + this.captionH + 24 + 'px';
     this.height = (title ? 64 : 0) + this.size.h + this.captionH + 24;
 
     const visible = Math.ceil((1920 - LEFT) / this.step);
@@ -54,7 +54,10 @@ export class Row {
     } else {
       this.index = Math.min(this.index, Math.max(0, items.length - 1));
     }
-    for (const t of this.pool) { t.index = -1; t.item = undefined; }
+    for (const t of this.pool) {
+      t.index = -1;
+      t.item = undefined;
+    }
     this.render();
   }
 
@@ -111,6 +114,6 @@ export class Row {
         tile.el.style.visibility = 'hidden';
       }
     }
-    setTransform(this.track, 'translateX(' + (-this.index * this.step) + 'px)');
+    setTransform(this.track, 'translateX(' + -this.index * this.step + 'px)');
   }
 }

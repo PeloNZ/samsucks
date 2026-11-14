@@ -11,21 +11,38 @@ TIZEN_VERSION=6.1
 # Tool output goes to build/setup.log, not the terminal. Each run starts a new log.
 LOG="$ROOT/build/setup.log"
 mkdir -p "$ROOT/build"
-: > "$LOG"
-log() { printf '%s %s\n' "$(date +%T)" "$*" >> "$LOG"; }
+: >"$LOG"
+log() { printf '%s %s\n' "$(date +%T)" "$*" >>"$LOG"; }
 # BASH_COMMAND is the source text, so variables such as the cert password stay unexpanded.
 trap 'rc=$?; log "FAILED (exit $rc) at line $LINENO: $BASH_COMMAND"; printf "\n  \033[31m✗ Failed at scripts/setup.sh:%s (exit %s). Log: %s\033[0m\n\n" "$LINENO" "$rc" "$LOG" >&2' ERR
 # Runs a command with its output in the log. Do not pass secrets: the arguments are logged.
-run() { log "+ $*"; local rc=0; "$@" >> "$LOG" 2>&1 || rc=$?; log "exit $rc"; return "$rc"; }
+run() {
+  log "+ $*"
+  local rc=0
+  "$@" >>"$LOG" 2>&1 || rc=$?
+  log "exit $rc"
+  return "$rc"
+}
 
-bold() { printf '\n\033[1m%s\033[0m\n' "$*"; log "== $*"; }
-ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; log "ok: $*"; }
-fail() { log "FAIL: $*"; printf '\n  \033[31m✗ %s\033[0m\n  Log: %s\n\n' "$*" "$LOG" >&2; exit 1; }
+bold() {
+  printf '\n\033[1m%s\033[0m\n' "$*"
+  log "== $*"
+}
+ok() {
+  printf '  \033[32m✓\033[0m %s\n' "$*"
+  log "ok: $*"
+}
+fail() {
+  log "FAIL: $*"
+  printf '\n  \033[31m✗ %s\033[0m\n  Log: %s\n\n' "$*" "$LOG" >&2
+  exit 1
+}
 
 get_env() { [ -f "$ENV" ] && sed -n "s/^$1=//p" "$ENV" | tail -1 || true; }
 set_env() {
-  if grep -q "^$1=" "$ENV"; then KEY="$1" VAL="$2" perl -pi -e 's/^\Q$ENV{KEY}\E=.*/$ENV{KEY}=$ENV{VAL}/' "$ENV"
-  else printf '%s=%s\n' "$1" "$2" >> "$ENV"; fi
+  if grep -q "^$1=" "$ENV"; then
+    KEY="$1" VAL="$2" perl -pi -e 's/^\Q$ENV{KEY}\E=.*/$ENV{KEY}=$ENV{VAL}/' "$ENV"
+  else printf '%s=%s\n' "$1" "$2" >>"$ENV"; fi
 }
 
 # --- 1. Tizen command-line tools ----------------------------------------------
@@ -36,7 +53,9 @@ case "$(uname -s)" in
   *) fail "Only macOS and Linux are supported (on Windows, use WSL)." ;;
 esac
 [ -f "$ENV" ] || cp "$ROOT/.env.example" "$ENV"
-TIZEN_STUDIO="$(get_env TIZEN_STUDIO)"; TIZEN_STUDIO="${TIZEN_STUDIO/\$HOME/$HOME}"; TIZEN_STUDIO="${TIZEN_STUDIO:-$HOME/tizen-sdk}"
+TIZEN_STUDIO="$(get_env TIZEN_STUDIO)"
+TIZEN_STUDIO="${TIZEN_STUDIO/\$HOME/$HOME}"
+TIZEN_STUDIO="${TIZEN_STUDIO:-$HOME/tizen-sdk}"
 TIZEN="$TIZEN_STUDIO/tools/ide/bin/tizen"
 SDB="$TIZEN_STUDIO/tools/sdb"
 PM="$TIZEN_STUDIO/package-manager/package-manager-cli.bin"
@@ -45,7 +64,7 @@ log "TIZEN_STUDIO=$TIZEN_STUDIO"
 for f in "$TIZEN" "$SDB" "$PM" "$TIZEN_STUDIO/jdk" "$HOME/.package-manager/jdk/Contents/Home/bin/java"; do
   log "$([ -e "$f" ] && echo exists || echo missing): $f"
 done
-[ -f "$TIZEN_STUDIO/sdk.info" ] && log "sdk.info: $(tr '\n' ' ' < "$TIZEN_STUDIO/sdk.info")"
+[ -f "$TIZEN_STUDIO/sdk.info" ] && log "sdk.info: $(tr '\n' ' ' <"$TIZEN_STUDIO/sdk.info")"
 
 if [ -x "$TIZEN" ]; then
   ok "already installed in $TIZEN_STUDIO"
@@ -65,7 +84,8 @@ else
   chmod +x "$DL"
   # On Apple Silicon, macOS kills the arm64e slice of the installer's bundled
   # unzip; under Rosetta it runs the x86_64 slice instead.
-  if [ "$(uname -sm)" = "Darwin arm64" ]; then run arch -x86_64 "$DL" --accept-license "$TIZEN_STUDIO"
+  if [ "$(uname -sm)" = "Darwin arm64" ]; then
+    run arch -x86_64 "$DL" --accept-license "$TIZEN_STUDIO"
   else run "$DL" --accept-license "$TIZEN_STUDIO"; fi
   log "tools/: $(ls "$TIZEN_STUDIO/tools" 2>&1 | tr '\n' ' ')"
   # The installer exits 0 even when it fails.
@@ -90,7 +110,7 @@ ok "Samsung TV extensions"
 # --- 2. Find the TV -------------------------------------------------------------
 bold "2/4  Finding your TV"
 if [ -n "${HOST_IP:-}" ]; then
-  MY_IP="$HOST_IP"  # set by scripts/dev.sh: in a container, the host's LAN IP
+  MY_IP="$HOST_IP" # set by scripts/dev.sh: in a container, the host's LAN IP
 elif [ "$(uname -s)" = Darwin ]; then
   IFACE=$(route -n get default 2>/dev/null | awk '/interface:/ { print $2 }')
   MY_IP=$(ipconfig getifaddr "${IFACE:-en0}" 2>/dev/null || true)
@@ -111,30 +131,39 @@ if [ -z "$INFO" ]; then
   FOUND=()
   TMP="$(mktemp -d)"
   for i in $(seq 1 254); do
-    ( r=$(tv_info "${MY_IP%.*}.$i"); grep -q '"type" *: *"Samsung SmartTV"' <<<"$r" && echo "$r" > "$TMP/${MY_IP%.*}.$i" ) &
+    (
+      r=$(tv_info "${MY_IP%.*}.$i")
+      grep -q '"type" *: *"Samsung SmartTV"' <<<"$r" && echo "$r" >"$TMP/${MY_IP%.*}.$i"
+    ) &
   done
   wait
   for f in "$TMP"/*; do [ -e "$f" ] && FOUND+=("$(basename "$f")"); done
-  [ ${#FOUND[@]} -gt 0 ] || { rm -rf "$TMP"; fail "No Samsung TV found on your network. Is it on, and on the same network as this computer?"; }
+  [ ${#FOUND[@]} -gt 0 ] || {
+    rm -rf "$TMP"
+    fail "No Samsung TV found on your network. Is it on, and on the same network as this computer?"
+  }
   if [ ${#FOUND[@]} -eq 1 ]; then
     TV_IP="${FOUND[0]}"
   else
     echo "  Found ${#FOUND[@]} TVs:"
     for n in "${!FOUND[@]}"; do echo "    $((n + 1))) ${FOUND[$n]}  $(field name "$(cat "$TMP/${FOUND[$n]}")")"; done
     read -rp "  Which one? [1] " PICK
-    TV_IP="${FOUND[$(( ${PICK:-1} - 1 ))]}"
+    TV_IP="${FOUND[$((${PICK:-1} - 1))]}"
   fi
   INFO=$(cat "$TMP/$TV_IP")
   rm -rf "$TMP"
 fi
-TV_NAME=$(field name "$INFO"); TV_MODEL=$(field modelName "$INFO")
+TV_NAME=$(field name "$INFO")
+TV_MODEL=$(field modelName "$INFO")
 ok "$TV_NAME ($TV_MODEL) at $TV_IP"
 set_env TV_IP "$TV_IP"
 set_env TV_MODEL "$TV_MODEL"
 
-DEV_MODE=$(field developerMode "$INFO"); DEV_IP=$(field developerIP "$INFO")
+DEV_MODE=$(field developerMode "$INFO")
+DEV_IP=$(field developerIP "$INFO")
 if [ "$DEV_MODE" != 1 ] || [ "$DEV_IP" != "$MY_IP" ]; then
-  if [ "$DEV_MODE" = 1 ]; then echo "  Developer Mode is on, but it points at $DEV_IP instead of this computer."
+  if [ "$DEV_MODE" = 1 ]; then
+    echo "  Developer Mode is on, but it points at $DEV_IP instead of this computer."
   else echo "  Developer Mode is off."; fi
   cat <<EOF
 
@@ -154,13 +183,14 @@ ok "Developer Mode is on and points at this computer"
 
 # --- 3. Signing certificate -----------------------------------------------------
 bold "3/4  Signing certificate"
-PROFILE="$(get_env TIZEN_SIGN_PROFILE)"; PROFILE="${PROFILE:-samsucks}"
+PROFILE="$(get_env TIZEN_SIGN_PROFILE)"
+PROFILE="${PROFILE:-samsucks}"
 set_env TIZEN_SIGN_PROFILE "$PROFILE"
 if "$TIZEN" security-profiles list 2>/dev/null | grep -q "^$PROFILE "; then
   ok "profile '$PROFILE' already exists"
 else
   PW="$(get_env TIZEN_CERT_PASSWORD)"
-  [ -n "$PW" ] || PW=$(LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom | head -c 24)
+  [ -n "$PW" ] || PW=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 24)
   set_env TIZEN_CERT_PASSWORD "$PW"
   "$TIZEN" certificate -a "$PROFILE" -p "$PW" -f "$PROFILE" >>"$LOG" 2>&1
   "$TIZEN" security-profiles add -n "$PROFILE" -a "$TIZEN_DATA/keystore/author/$PROFILE.p12" -p "$PW" >>"$LOG" 2>&1

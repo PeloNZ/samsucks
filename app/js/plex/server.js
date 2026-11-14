@@ -33,8 +33,15 @@ export class Server {
   image(path, width, height, { blur = 0, quality = 85, format = 'jpeg' } = {}) {
     if (!path) return '';
     return withQuery(this.uri + '/photo/:/transcode', {
-      width, height, minSize: 1, upscale: 1, blur: blur || undefined,
-      quality, format, url: path, 'X-Plex-Token': this.token,
+      width,
+      height,
+      minSize: 1,
+      upscale: 1,
+      blur: blur || undefined,
+      quality,
+      format,
+      url: path,
+      'X-Plex-Token': this.token,
     });
   }
 
@@ -59,7 +66,8 @@ export class Server {
 
   async items(sectionId, start, size, { sort = 'titleSort', type } = {}) {
     const mc = await this.get('/library/sections/' + sectionId + '/all', {
-      sort, type,
+      sort,
+      type,
       'X-Plex-Container-Start': start,
       'X-Plex-Container-Size': size,
       excludeFields: 'summary,tagline',
@@ -90,49 +98,70 @@ export class Server {
 
   scrobble(ratingKey) {
     return request(this.uri + '/:/scrobble', {
-      token: this.token, params: { identifier: 'com.plexapp.plugins.library', key: ratingKey },
+      token: this.token,
+      params: { identifier: 'com.plexapp.plugins.library', key: ratingKey },
     });
   }
 
   unscrobble(ratingKey) {
     return request(this.uri + '/:/unscrobble', {
-      token: this.token, params: { identifier: 'com.plexapp.plugins.library', key: ratingKey },
+      token: this.token,
+      params: { identifier: 'com.plexapp.plugins.library', key: ratingKey },
     });
   }
 
   // HLS URL for content the TV can't direct play. Video is passed through when
   // possible; only the audio (e.g. DTS) or container gets converted.
-  transcodeUrl(item, { session, offsetMs = 0, mediaIndex = 0, maxBitrate = 40000, resolution = '3840x2160', audioStreamID, subtitleStreamID } = {}) {
+  transcodeUrl(
+    item,
+    { session, offsetMs = 0, mediaIndex = 0, maxBitrate = 40000, resolution = '3840x2160', audioStreamID, subtitleStreamID } = {},
+  ) {
     const extra = [
       'add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mpegts&videoCodec=h264,hevc&audioCodec=aac,ac3,eac3)',
       'add-direct-play-profile(type=videoProfile&container=mp4,mkv&videoCodec=h264,hevc&audioCodec=aac,ac3,eac3)',
     ].join('+');
-    return withQuery(this.uri + '/video/:/transcode/universal/start.m3u8', Object.assign({}, identity(), {
-      path: '/library/metadata/' + item.ratingKey,
-      mediaIndex, partIndex: 0,
-      protocol: 'hls', fastSeek: 1,
-      directPlay: 0, directStream: 1, directStreamAudio: 1,
-      offset: Math.floor(offsetMs / 1000),
-      videoQuality: 100, videoResolution: resolution, maxVideoBitrate: maxBitrate,
-      subtitles: subtitleStreamID ? 'burn' : 'none', subtitleSize: 100,
-      audioBoost: 100, location: 'lan', copyts: 1,
-      session, 'X-Plex-Session-Identifier': session,
-      'X-Plex-Client-Profile-Extra': extra,
-      'X-Plex-Token': this.token,
-    }));
+    return withQuery(
+      this.uri + '/video/:/transcode/universal/start.m3u8',
+      Object.assign({}, identity(), {
+        path: '/library/metadata/' + item.ratingKey,
+        mediaIndex,
+        partIndex: 0,
+        protocol: 'hls',
+        fastSeek: 1,
+        directPlay: 0,
+        directStream: 1,
+        directStreamAudio: 1,
+        offset: Math.floor(offsetMs / 1000),
+        videoQuality: 100,
+        videoResolution: resolution,
+        maxVideoBitrate: maxBitrate,
+        subtitles: subtitleStreamID ? 'burn' : 'none',
+        subtitleSize: 100,
+        audioBoost: 100,
+        location: 'lan',
+        copyts: 1,
+        session,
+        'X-Plex-Session-Identifier': session,
+        'X-Plex-Client-Profile-Extra': extra,
+        'X-Plex-Token': this.token,
+      }),
+    );
   }
 
   // Selected audio/subtitle streams are stored per part on the server.
   selectStreams(partId, { audioStreamID, subtitleStreamID }) {
     return request(this.uri + '/library/parts/' + partId, {
-      method: 'PUT', token: this.token,
+      method: 'PUT',
+      token: this.token,
       params: { audioStreamID, subtitleStreamID, allParts: 1 },
     }).catch(() => {});
   }
 
   stopTranscode(session) {
     return request(this.uri + '/video/:/transcode/universal/stop', {
-      token: this.token, params: { session }, timeout: 5000,
+      token: this.token,
+      params: { session },
+      timeout: 5000,
     }).catch(() => {});
   }
 }

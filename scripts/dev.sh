@@ -19,7 +19,8 @@ case "$(uname -s)" in
   *) HOST_IP=$(ip -4 route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p') ;;
 esac
 
-TTY=(); [ -t 0 ] && TTY=(-it)
+TTY=()
+[ -t 0 ] && TTY=(-it)
 # ${TTY[@]+...}: macOS bash 3.2 treats an empty array as unset under set -u.
 exec docker run --rm ${TTY[@]+"${TTY[@]}"} --platform linux/amd64 \
   -v "$ROOT:/work" -v samsucks-home:/home/dev \

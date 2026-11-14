@@ -15,7 +15,8 @@ export function SettingsScreen() {
   h('h1', 'settings-title', el).textContent = 'Settings';
   const list = h('div', 'settings-list', el);
   const foot = h('div', 'settings-foot', el);
-  foot.textContent = 'SamSUCKS ' + VERSION + (DEV ? ' (dev)' : '') + ' · ' + (session.server ? session.server.uri.replace(/X-Plex-Token=.*/, '') : '');
+  foot.textContent =
+    'SamSUCKS ' + VERSION + (DEV ? ' (dev)' : '') + ' · ' + (session.server ? session.server.uri.replace(/X-Plex-Token=.*/, '') : '');
 
   let index = 0;
   let items = [];
@@ -25,9 +26,23 @@ export function SettingsScreen() {
     items = [
       { label: 'Server', value: session.server ? session.server.name : '—', run: switchServer },
       { label: 'Signed in as', value: session.user ? session.user.title : '—', run: doSignOut, action: 'Sign out' },
-      { label: 'Performance overlay', value: hudEnabled() ? 'On' : 'Off', run: () => { setHud(!hudEnabled()); build(); } },
+      {
+        label: 'Performance overlay',
+        value: hudEnabled() ? 'On' : 'Off',
+        run: () => {
+          setHud(!hudEnabled());
+          build();
+        },
+      },
       // For before/after recordings: brings back the full-screen gradients that took ~2s per repaint.
-      { label: 'Demo: original slow renderer', value: legacyGradients() ? 'On' : 'Off', run: () => { setLegacyGradients(!legacyGradients()); build(); } },
+      {
+        label: 'Demo: original slow renderer',
+        value: legacyGradients() ? 'On' : 'Off',
+        run: () => {
+          setLegacyGradients(!legacyGradients());
+          build();
+        },
+      },
     ];
     items.forEach(it => {
       it.el = h('div', 'setting', list);
@@ -71,11 +86,24 @@ export function SettingsScreen() {
   return {
     el,
     name: 'settings',
-    onShow() { ambience.restore(); },
+    onShow() {
+      ambience.restore();
+    },
     onKey(action) {
-      if (action === 'up') { index = Math.max(0, index - 1); render(); return true; }
-      if (action === 'down') { index = Math.min(items.length - 1, index + 1); render(); return true; }
-      if (action === 'enter') { items[index].run(); return true; }
+      if (action === 'up') {
+        index = Math.max(0, index - 1);
+        render();
+        return true;
+      }
+      if (action === 'down') {
+        index = Math.min(items.length - 1, index + 1);
+        render();
+        return true;
+      }
+      if (action === 'enter') {
+        items[index].run();
+        return true;
+      }
       return false;
     },
   };

@@ -13,7 +13,7 @@ const DIM = 0.78; // keep text readable on bright posters
 
 function rgb(hex) {
   const n = Number.parseInt(hex || '0b0d12', 16);
-  return [(n >> 16 & 255) * DIM, (n >> 8 & 255) * DIM, (n & 255) * DIM];
+  return [((n >> 16) & 255) * DIM, ((n >> 8) & 255) * DIM, (n & 255) * DIM];
 }
 
 function createLayer(parent, className) {
@@ -41,7 +41,9 @@ function paint(canvas, colors) {
     return;
   }
   const img = canvas._ctx.createImageData(2, 2);
-  px.forEach(([r, g, b], i) => { img.data.set([r, g, b, 255], i * 4); });
+  px.forEach(([r, g, b], i) => {
+    img.data.set([r, g, b, 255], i * 4);
+  });
   canvas._ctx.putImageData(img, 0, 0);
 }
 
@@ -51,9 +53,14 @@ let legacy = false;
 
 function legacyGradient(colors) {
   const c = colors || FALLBACK;
-  return ['topLeft 0% 0%', 'topRight 100% 0%', 'bottomLeft 0% 100%', 'bottomRight 100% 100%']
-    .map(s => { const [k, x, y] = s.split(' '); return 'radial-gradient(ellipse at ' + x + ' ' + y + ', #' + c[k] + ' 0%, transparent 70%)'; })
-    .join(',') + ',#0B0D12';
+  return (
+    ['topLeft 0% 0%', 'topRight 100% 0%', 'bottomLeft 0% 100%', 'bottomRight 100% 100%']
+      .map(s => {
+        const [k, x, y] = s.split(' ');
+        return 'radial-gradient(ellipse at ' + x + ' ' + y + ', #' + c[k] + ' 0%, transparent 70%)';
+      })
+      .join(',') + ',#0B0D12'
+  );
 }
 
 class Ambience {
@@ -89,7 +96,11 @@ export function setLegacyGradients(on) {
   if (!shared) return;
   shared.el.classList.toggle('legacy', on);
   shared.el.style.background = on ? legacyGradient(shared.colors) : '';
-  if (!on) { const c = shared.colors; shared.key = null; shared.set(c); }
+  if (!on) {
+    const c = shared.colors;
+    shared.key = null;
+    shared.set(c);
+  }
 }
 
 export function legacyGradients() {
@@ -102,8 +113,13 @@ export function useAmbience(initial) {
   if (!shared) shared = new Ambience(document.body.insertBefore(document.createElement('div'), document.body.firstChild));
   let colors = initial || null;
   return {
-    set(c) { colors = c || null; shared.set(colors); },
-    restore() { shared.set(colors); },
+    set(c) {
+      colors = c || null;
+      shared.set(colors);
+    },
+    restore() {
+      shared.set(colors);
+    },
   };
 }
 

@@ -42,10 +42,16 @@ export function LoginScreen({ onDone }) {
       const expires = Date.now() + (pin.expiresIn || 900) * 1000 - 5000;
       const poll = async () => {
         if (!alive) return;
-        if (Date.now() > expires) { start(); return; }
+        if (Date.now() > expires) {
+          start();
+          return;
+        }
         try {
           const token = await checkPin(pin.id);
-          if (token) { await finish(token); return; }
+          if (token) {
+            await finish(token);
+            return;
+          }
         } catch (e) {
           error('pin poll failed', e);
         }
@@ -54,7 +60,7 @@ export function LoginScreen({ onDone }) {
       timer = setTimeout(poll, 2000);
     } catch (e) {
       error('createPin failed', e);
-      setText(status, 'Can\'t reach plex.tv. Retrying…');
+      setText(status, "Can't reach plex.tv. Retrying…");
       timer = setTimeout(start, 4000);
     }
   }
@@ -84,9 +90,14 @@ export function LoginScreen({ onDone }) {
   return {
     el,
     name: 'login',
-    onShow() { ambience.restore(); },
+    onShow() {
+      ambience.restore();
+    },
     onKey(action) {
-      if (action === 'enter') { start(); return true; }
+      if (action === 'enter') {
+        start();
+        return true;
+      }
       return false;
     },
     destroy() {
@@ -115,7 +126,9 @@ export function ServerPicker({ servers, onDone }) {
   return {
     el,
     name: 'picker',
-    onShow() { ambience.restore(); },
+    onShow() {
+      ambience.restore();
+    },
     onKey(action) {
       if (action === 'up' || action === 'down') {
         index = Math.max(0, Math.min(servers.length - 1, index + (action === 'down' ? 1 : -1)));
@@ -125,7 +138,13 @@ export function ServerPicker({ servers, onDone }) {
       if (action === 'enter') {
         const s = servers[index];
         setText(status, 'Connecting to ' + s.name + '…');
-        connect(s).then(uri => { useServer(s, uri); onDone(); }, e => setText(status, e.message));
+        connect(s).then(
+          uri => {
+            useServer(s, uri);
+            onDone();
+          },
+          e => setText(status, e.message),
+        );
         return true;
       }
       return false;

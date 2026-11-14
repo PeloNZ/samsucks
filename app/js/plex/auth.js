@@ -16,11 +16,14 @@ export async function checkPin(id) {
 
 // Link that signs this device in from a phone, encoded in the login QR code.
 export function authAppUrl(code) {
-  return 'https://app.plex.tv/auth#?' + query({
-    clientID: clientId,
-    code,
-    'context[device][product]': PRODUCT,
-  });
+  return (
+    'https://app.plex.tv/auth#?' +
+    query({
+      clientID: clientId,
+      code,
+      'context[device][product]': PRODUCT,
+    })
+  );
 }
 
 export async function getUser(token) {
@@ -29,7 +32,8 @@ export async function getUser(token) {
 
 export async function getServers(token) {
   const resources = await request(TV + '/resources', {
-    token, params: { includeHttps: 1, includeRelay: 1, includeIPv6: 0 },
+    token,
+    params: { includeHttps: 1, includeRelay: 1, includeIPv6: 0 },
   });
   return resources.filter(r => (r.provides || '').indexOf('server') !== -1);
 }
@@ -60,7 +64,11 @@ function firstSuccess(promises) {
   return new Promise((resolve, reject) => {
     let pending = promises.length;
     if (!pending) reject(new Error('no candidates'));
-    promises.forEach(p => p.then(resolve, () => { if (--pending === 0) reject(new Error('all failed')); }));
+    promises.forEach(p =>
+      p.then(resolve, () => {
+        if (--pending === 0) reject(new Error('all failed'));
+      }),
+    );
   });
 }
 

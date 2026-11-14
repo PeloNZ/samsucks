@@ -30,9 +30,17 @@ createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
 
   if (req.method === 'GET' && url.pathname === '/cmd') {
-    if (waiting) { clearTimeout(waiting.timer); waiting.end('[]'); }
+    if (waiting) {
+      clearTimeout(waiting.timer);
+      waiting.end('[]');
+    }
     waiting = res;
-    res.timer = setTimeout(() => { if (waiting === res) { waiting = null; res.end('[]'); } }, 20000);
+    res.timer = setTimeout(() => {
+      if (waiting === res) {
+        waiting = null;
+        res.end('[]');
+      }
+    }, 20000);
     deliver();
     return;
   }
@@ -49,9 +57,14 @@ createServer((req, res) => {
     return;
   }
 
-  if (req.method !== 'POST') { res.end('ok'); return; }
+  if (req.method !== 'POST') {
+    res.end('ok');
+    return;
+  }
   let body = '';
-  req.on('data', c => { body += c; });
+  req.on('data', c => {
+    body += c;
+  });
   req.on('end', () => {
     try {
       for (const entry of JSON.parse(body)) {

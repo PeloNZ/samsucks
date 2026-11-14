@@ -34,7 +34,11 @@ export function SearchScreen() {
   async function run(q) {
     query = q;
     const gen = ++generation;
-    if (q.length < 2) { setRows([]); setText(status, ''); return; }
+    if (q.length < 2) {
+      setRows([]);
+      setText(status, '');
+      return;
+    }
     setText(status, 'Searching…');
     try {
       const hubs = await session.server.search(q);
@@ -52,8 +56,11 @@ export function SearchScreen() {
     let y = 0;
     rows = hubs.map(hub => {
       const row = new Row({
-        title: hub.title, kind: hub.type === 'episode' ? 'episode' : 'poster',
-        caption: true, items: hub.Metadata, onSelect: item => openItem(item),
+        title: hub.title,
+        kind: hub.type === 'episode' ? 'episode' : 'poster',
+        caption: true,
+        items: hub.Metadata,
+        onSelect: item => openItem(item),
       });
       setTransform(row.el, 'translateY(' + y + 'px)');
       row.y = y;
@@ -69,7 +76,7 @@ export function SearchScreen() {
     rows.forEach((r, i) => r.setActive(i === rowIndex));
     el.classList.toggle('in-input', rowIndex < 0);
     const y = rowIndex > 0 ? rows[rowIndex].y : 0;
-    setTransform(track, 'translateY(' + (-y) + 'px)');
+    setTransform(track, 'translateY(' + -y + 'px)');
   }
 
   function focusInput() {
@@ -86,7 +93,10 @@ export function SearchScreen() {
     if (e.keyCode === IME_DONE || e.keyCode === 13) {
       input.blur();
       run(input.value.trim());
-      if (rows.length) { rowIndex = 0; render(); }
+      if (rows.length) {
+        rowIndex = 0;
+        render();
+      }
     } else if (e.keyCode === IME_CANCEL) {
       input.blur();
     }
@@ -99,26 +109,64 @@ export function SearchScreen() {
       ambience.restore();
       if (rowIndex < 0) setTimeout(focusInput, 50);
     },
-    onHide() { input.blur(); },
+    onHide() {
+      input.blur();
+    },
     onKey(action) {
       if (rowIndex < 0) {
-        if (action === 'down' && rows.length) { input.blur(); rowIndex = 0; render(); return true; }
-        if (action === 'enter') { input.focus(); return true; }
-        if (action === 'back') { input.blur(); return false; }
+        if (action === 'down' && rows.length) {
+          input.blur();
+          rowIndex = 0;
+          render();
+          return true;
+        }
+        if (action === 'enter') {
+          input.focus();
+          return true;
+        }
+        if (action === 'back') {
+          input.blur();
+          return false;
+        }
         return true;
       }
       const row = rows[rowIndex];
       switch (action) {
-        case 'left': row.move(-1); return true;
-        case 'right': row.move(1); return true;
-        case 'up': if (rowIndex === 0) focusInput(); else { rowIndex--; render(); } return true;
-        case 'down': if (rowIndex < rows.length - 1) { rowIndex++; render(); } return true;
-        case 'enter': row.select(); return true;
-        case 'play': case 'playpause': if (row.current()) playItem(row.current()); return true;
-        case 'back': focusInput(); return true;
+        case 'left':
+          row.move(-1);
+          return true;
+        case 'right':
+          row.move(1);
+          return true;
+        case 'up':
+          if (rowIndex === 0) focusInput();
+          else {
+            rowIndex--;
+            render();
+          }
+          return true;
+        case 'down':
+          if (rowIndex < rows.length - 1) {
+            rowIndex++;
+            render();
+          }
+          return true;
+        case 'enter':
+          row.select();
+          return true;
+        case 'play':
+        case 'playpause':
+          if (row.current()) playItem(row.current());
+          return true;
+        case 'back':
+          focusInput();
+          return true;
       }
       return false;
     },
-    destroy() { clearTimeout(timer); generation++; },
+    destroy() {
+      clearTimeout(timer);
+      generation++;
+    },
   };
 }
