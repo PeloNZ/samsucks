@@ -1,0 +1,38 @@
+# Ubuntu amd64 dev environment. Use scripts/dev.sh, which sets HOST_IP.
+#   ./scripts/dev.sh                     shell in the dev container
+#   ./scripts/dev.sh ./scripts/setup.sh  one command
+#   docker compose logs -f devserver     TV logs (also in build/tv.log)
+#
+# devserver receives logs from dev builds on the TV and is published on port 8790.
+# dev shares its network, so localhost:8790 (tools/tveval.sh, curl /send) works
+# from the Mac and from inside dev. Starting dev also starts devserver.
+name: samsucks
+
+x-base: &base
+  image: samsucks-dev
+  build: .
+  platform: linux/amd64
+  volumes:
+    - .:/work
+    - home:/home/dev
+  environment:
+    HOST_IP: ${HOST_IP:-}
+
+services:
+  devserver:
+    <<: *base
+    command: node tools/devserver.mjs
+    ports:
+      - "8790:8790"
+    restart: unless-stopped
+
+  dev:
+    <<: *base
+    network_mode: service:devserver
+    depends_on:
+      - devserver
+    command: bash
+
+volumes:
+  home:
+    name: samsucks-home # keeps the Tizen tools, certificates and downloads
