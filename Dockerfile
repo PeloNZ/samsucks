@@ -11,6 +11,7 @@ ARG SHFMT_VERSION=3.10.0
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       ca-certificates curl iproute2 perl python3 shellcheck unzip zip xz-utils \
+      cpio rpm2cpio libkf5itemmodels5 libkf5kiowidgets5 libkchart2 \
  && rm -rf /var/lib/apt/lists/*
 
 # Checkers for scripts/check.sh: Biome (JS/CSS/JSON lint + format), shfmt (shell format).
