@@ -3,12 +3,19 @@
 //    matters more than what scrolled past),
 //  - requests for nodes that were recycled before loading are dropped,
 //  - decode() runs off the main thread before the image is attached, so
-//    attaching never stalls a frame.
+//    attaching never stalls a frame (where decode() exists: Chromium 64+),
+//  - no downloads start while a direction key is held: rows scroll past
+//    before their posters arrive, and starting the downloads alone cost a
+//    2018 TV ~15 fps. They start when the key is released.
+import { isFast } from '../input.js';
+
 const MAX_ACTIVE = 6;
+const HELD_RETRY_MS = 100;
 const LOADED_MAX = 800;
 
 const queue = [];
 let active = 0;
+let retryTimer = 0;
 const loaded = new Map(); // url -> true, in insertion order for LRU trimming
 
 function remember(url) {
@@ -28,6 +35,15 @@ function attach(img, url, instant) {
 }
 
 function pump() {
+  if (isFast()) {
+    if (!retryTimer) {
+      retryTimer = setTimeout(() => {
+        retryTimer = 0;
+        pump();
+      }, HELD_RETRY_MS);
+    }
+    return;
+  }
   while (active < MAX_ACTIVE && queue.length) {
     const job = queue.pop();
     if (job.img._want !== job.url) continue;
