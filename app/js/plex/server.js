@@ -70,7 +70,11 @@ export class Server {
       type,
       'X-Plex-Container-Start': start,
       'X-Plex-Container-Size': size,
-      excludeFields: 'summary,tagline',
+      // Grid pages skip what tiles never show: 288 KB -> 171 KB per 140 movies,
+      // and JSON.parse of a page dropped from ~50 ms on a 2018 TV. The detail
+      // and player screens fetch full metadata. (Plex ignores Image here.)
+      excludeFields: 'summary,tagline,guid,ratingImage,audienceRatingImage',
+      excludeElements: 'Media,Writer,Country',
     });
     return { total: mc.totalSize != null ? mc.totalSize : mc.size, items: mc.Metadata || [] };
   }
