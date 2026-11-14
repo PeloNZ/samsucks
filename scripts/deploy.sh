@@ -3,6 +3,7 @@
 #   ./scripts/deploy.sh               release build
 #   ./scripts/deploy.sh --dev         dev build: perf overlay, logs + remote control via tools/devserver.mjs
 #   ./scripts/deploy.sh --build-only  just produce build/app (no TV needed)
+#   ./scripts/deploy.sh --package-only  build and sign build/samsucks.wgt (no TV needed)
 #   ./scripts/deploy.sh --no-run      install but don't launch
 set -euo pipefail
 
@@ -18,11 +19,13 @@ set +a
 DEV=0
 RUN=1
 INSTALL=1
+PACKAGE_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --dev) DEV=1 ;;
     --no-run) RUN=0 ;;
     --build-only) INSTALL=0 ;;
+    --package-only) PACKAGE_ONLY=1 ;;
   esac
 done
 
@@ -68,6 +71,10 @@ rm -f "$ROOT"/build/*.wgt
 # The package is named after the app ("SamSUCKS - Better Plex.wgt"); the installer chokes on spaces.
 WGT="$ROOT/build/samsucks.wgt"
 mv "$(ls "$ROOT"/build/*.wgt | head -1)" "$WGT"
+if [ "$PACKAGE_ONLY" = 1 ]; then
+  echo "packaged $WGT"
+  exit 0
+fi
 
 "$SDB" connect "$TARGET" >/dev/null
 # A freshly started sdb server (each dev container starts one) can list no

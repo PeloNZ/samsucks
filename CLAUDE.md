@@ -29,7 +29,10 @@ All TV commands read `.env` (made by `./scripts/setup.sh`): `TV_IP`, `TV_SDB_POR
     ./scripts/deploy.sh               # release build → package → install → launch
     ./scripts/deploy.sh --dev         # dev build: perf overlay, logs, remote control
     ./scripts/deploy.sh --build-only  # only write build/app (no TV needed)
+    ./scripts/deploy.sh --package-only  # signed build/samsucks.wgt, no TV needed
     ./scripts/deploy.sh --no-run      # install, do not launch
+
+A release build runs on the TV alone: it needs no dev host. Install it once from any computer with Developer Mode on the TV pointed at that computer, then turn Developer Mode off. An upgrade must use the same author certificate (the `samsucks` profile in the `samsucks-home` volume), or uninstall the app first.
 
 Desktop browser: run `--build-only`, then serve `build/app/` with any static server. The UI zooms the 1920×1080 layout to fit the window and uses `<video>` instead of AVPlay.
 
