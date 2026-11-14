@@ -8,9 +8,19 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV="$ROOT/.env"
 TIZEN_VERSION=6.1
 
-bold() { printf '\n\033[1m%s\033[0m\n' "$*"; }
-ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
-fail() { printf '\n  \033[31m✗ %s\033[0m\n\n' "$*" >&2; exit 1; }
+# Tool output goes to build/setup.log, not the terminal. Each run starts a new log.
+LOG="$ROOT/build/setup.log"
+mkdir -p "$ROOT/build"
+: > "$LOG"
+log() { printf '%s %s\n' "$(date +%T)" "$*" >> "$LOG"; }
+# BASH_COMMAND is the source text, so variables such as the cert password stay unexpanded.
+trap 'rc=$?; log "FAILED (exit $rc) at line $LINENO: $BASH_COMMAND"; printf "\n  \033[31m✗ Failed at scripts/setup.sh:%s (exit %s). Log: %s\033[0m\n\n" "$LINENO" "$rc" "$LOG" >&2' ERR
+# Runs a command with its output in the log. Do not pass secrets: the arguments are logged.
+run() { log "+ $*"; local rc=0; "$@" >> "$LOG" 2>&1 || rc=$?; log "exit $rc"; return "$rc"; }
+
+bold() { printf '\n\033[1m%s\033[0m\n' "$*"; log "== $*"; }
+ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; log "ok: $*"; }
+fail() { log "FAIL: $*"; printf '\n  \033[31m✗ %s\033[0m\n  Log: %s\n\n' "$*" "$LOG" >&2; exit 1; }
 
 get_env() { [ -f "$ENV" ] && sed -n "s/^$1=//p" "$ENV" | tail -1 || true; }
 set_env() {
@@ -26,35 +36,54 @@ case "$(uname -s)" in
   *) fail "Only macOS and Linux are supported (on Windows, use WSL)." ;;
 esac
 [ -f "$ENV" ] || cp "$ROOT/.env.example" "$ENV"
-TIZEN_STUDIO="$(get_env TIZEN_STUDIO)"; TIZEN_STUDIO="${TIZEN_STUDIO/\$HOME/$HOME}"; TIZEN_STUDIO="${TIZEN_STUDIO:-$HOME/tizen-studio}"
+TIZEN_STUDIO="$(get_env TIZEN_STUDIO)"; TIZEN_STUDIO="${TIZEN_STUDIO/\$HOME/$HOME}"; TIZEN_STUDIO="${TIZEN_STUDIO:-$HOME/tizen-sdk}"
 TIZEN="$TIZEN_STUDIO/tools/ide/bin/tizen"
 SDB="$TIZEN_STUDIO/tools/sdb"
 PM="$TIZEN_STUDIO/package-manager/package-manager-cli.bin"
+log "host: $(uname -sm), macOS $(sw_vers -productVersion 2>/dev/null || echo n/a)"
+log "TIZEN_STUDIO=$TIZEN_STUDIO"
+for f in "$TIZEN" "$SDB" "$PM" "$TIZEN_STUDIO/jdk" "$HOME/.package-manager/jdk/Contents/Home/bin/java"; do
+  log "$([ -e "$f" ] && echo exists || echo missing): $f"
+done
+[ -f "$TIZEN_STUDIO/sdk.info" ] && log "sdk.info: $(tr '\n' ' ' < "$TIZEN_STUDIO/sdk.info")"
 
 if [ -x "$TIZEN" ]; then
   ok "already installed in $TIZEN_STUDIO"
 else
-  echo "  Downloading $INSTALLER (~270 MB)…"
-  TMP="$(mktemp -d)"
-  curl -fL --progress-bar -o "$TMP/$INSTALLER" "https://download.tizen.org/sdk/Installer/tizen-studio_${TIZEN_VERSION}/$INSTALLER"
-  chmod +x "$TMP/$INSTALLER"
+  # The installer refuses an existing folder (and still exits 0).
+  [ ! -e "$TIZEN_STUDIO" ] || fail "$TIZEN_STUDIO exists but has no tizen CLI (a failed install?). Move it aside, then run this again."
+  # Kept across runs, so a failed install does not download again.
+  DL="$ROOT/build/downloads/$INSTALLER"
+  if [ -f "$DL" ]; then
+    ok "using downloaded $INSTALLER"
+  else
+    echo "  Downloading $INSTALLER (~270 MB)…"
+    mkdir -p "$(dirname "$DL")"
+    curl -fL -C - --progress-bar -o "$DL.part" "https://download.tizen.org/sdk/Installer/tizen-studio_${TIZEN_VERSION}/$INSTALLER"
+    mv "$DL.part" "$DL"
+  fi
+  chmod +x "$DL"
   # On Apple Silicon, macOS kills the arm64e slice of the installer's bundled
   # unzip; under Rosetta it runs the x86_64 slice instead.
-  if [ "$(uname -sm)" = "Darwin arm64" ]; then arch -x86_64 "$TMP/$INSTALLER" --accept-license "$TIZEN_STUDIO" >/dev/null
-  else "$TMP/$INSTALLER" --accept-license "$TIZEN_STUDIO" >/dev/null; fi
-  rm -rf "$TMP"
+  if [ "$(uname -sm)" = "Darwin arm64" ]; then run arch -x86_64 "$DL" --accept-license "$TIZEN_STUDIO"
+  else run "$DL" --accept-license "$TIZEN_STUDIO"; fi
+  log "tools/: $(ls "$TIZEN_STUDIO/tools" 2>&1 | tr '\n' ' ')"
   # The installer exits 0 even when it fails.
   [ -x "$TIZEN" ] || fail "The Tizen installer failed: $TIZEN is missing."
   ok "installed in $TIZEN_STUDIO"
 fi
+TIZEN_DATA=$(sed -n 's/^TIZEN_SDK_DATA_PATH=//p' "$TIZEN_STUDIO/sdk.info")
+log "TIZEN_DATA=$TIZEN_DATA"
 
 PACKAGES="cert-add-on TV-SAMSUNG-Public-WebAppDevelopment TV-SAMSUNG-Extension-Tools Certificate-Manager"
-INSTALLED=$("$PM" show-pkgs 2>/dev/null | awk '$1 == "i" { print $2 }')
+PKGS=$("$PM" show-pkgs 2>&1 || true)
+log "show-pkgs: $PKGS"
+INSTALLED=$(awk '$1 == "i" { print $2 }' <<<"$PKGS")
 MISSING=""
 for p in $PACKAGES; do echo "$INSTALLED" | grep -qx "$p" || MISSING="$MISSING $p"; done
 if [ -n "$MISSING" ]; then
   echo "  Installing Samsung TV extensions (a few minutes)…"
-  "$PM" install --accept-license $MISSING >/dev/null
+  run "$PM" install --accept-license $MISSING
 fi
 ok "Samsung TV extensions"
 
@@ -131,15 +160,15 @@ else
   PW="$(get_env TIZEN_CERT_PASSWORD)"
   [ -n "$PW" ] || PW=$(LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom | head -c 24)
   set_env TIZEN_CERT_PASSWORD "$PW"
-  "$TIZEN" certificate -a "$PROFILE" -p "$PW" -f "$PROFILE" >/dev/null
-  "$TIZEN" security-profiles add -n "$PROFILE" -a "$HOME/tizen-studio-data/keystore/author/$PROFILE.p12" -p "$PW" >/dev/null
+  "$TIZEN" certificate -a "$PROFILE" -p "$PW" -f "$PROFILE" >>"$LOG" 2>&1
+  "$TIZEN" security-profiles add -n "$PROFILE" -a "$TIZEN_DATA/keystore/author/$PROFILE.p12" -p "$PW" >>"$LOG" 2>&1
   ok "created profile '$PROFILE' (password saved in .env)"
 fi
-"$TIZEN" cli-config "profiles.path=$HOME/tizen-studio-data/profile/profiles.xml" >/dev/null
+"$TIZEN" cli-config "profiles.path=$TIZEN_DATA/profile/profiles.xml" >>"$LOG" 2>&1
 
 # --- 4. Connect -------------------------------------------------------------------
 bold "4/4  Connecting to the TV"
-"$SDB" connect "$TV_IP:26101" >/dev/null 2>&1 || true
+"$SDB" connect "$TV_IP:26101" >>"$LOG" 2>&1 || true
 "$SDB" devices | grep -q "^$TV_IP:26101" || fail "The TV didn't accept the connection. Restart the TV and run this again."
 ok "connected"
 

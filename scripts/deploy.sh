@@ -44,7 +44,7 @@ echo "built $([ "$DEV" = 1 ] && echo dev || echo release) $VERSION → build/app
 [ "$INSTALL" = 1 ] || exit 0
 
 # --- package, sign, install, launch -------------------------------------------
-TIZEN_STUDIO="${TIZEN_STUDIO:-$HOME/tizen-studio}"
+TIZEN_STUDIO="${TIZEN_STUDIO:-$HOME/tizen-sdk}"
 SDB="$TIZEN_STUDIO/tools/sdb"
 TIZEN="$TIZEN_STUDIO/tools/ide/bin/tizen"
 TARGET="$TV_IP:${TV_SDB_PORT:-26101}"
