@@ -2,16 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-SamSUCKS is a Plex client for Samsung Tizen TVs. Source is plain ES modules, no framework, no npm. `deploy.sh` bundles it with esbuild for old TVs. There are no tests.
+SamSUCKS is a Plex client for Samsung Tizen TVs. Source is plain ES modules, no framework, no npm. `deploy.sh` bundles it with esbuild for old TVs.
 
 ## Commands
 
-Run every script in the Ubuntu amd64 dev container. It matches the Ubuntu target machine and has the Tizen CLI, sdb, Node 22, esbuild and the checkers. The Tizen tools and certificates live in the `samsucks-home` Docker volume.
+Run every script in the Ubuntu amd64 dev container (`compose.yaml`). It matches the Ubuntu target machine and has the Tizen CLI, sdb, Node 22, esbuild and the checkers. The Tizen tools and certificates live in the `samsucks-home` Docker volume. The `devserver` service runs `tools/devserver.mjs` on port 8790; the `dev` service shares its network, so `localhost:8790` works on the host and in `dev`.
 
-    ./scripts/dev.sh                           # shell in the container (repo at /work, port 8790 published)
+    ./scripts/dev.sh                           # shell in the dev container (repo at /work); also starts devserver
     ./scripts/dev.sh <command>                 # run one command, e.g. ./scripts/dev.sh ./scripts/setup.sh
-    ./scripts/dev.sh ./scripts/check.sh        # Biome lint + format, Chromium 56 syntax, shellcheck, shfmt
+    ./scripts/dev.sh ./scripts/check.sh        # Biome lint + format, Chromium 56 syntax, shellcheck, shfmt, unit tests
     ./scripts/dev.sh ./scripts/check.sh --fix  # apply lint fixes and formatting
+    ./scripts/dev.sh node --test 'test/**/*.test.mjs'                 # unit tests
+    ./scripts/dev.sh node --test --test-name-pattern='CueTrack' 'test/**/*.test.mjs'  # one test
+    docker compose logs -f devserver           # TV logs from dev builds (also build/tv.log)
+
+Unit tests use Node's built-in `node:test` and `node:assert` (no npm). They import app modules directly from `app/js`. Modules that touch `document`, `window` or `localStorage` at load need small fakes for those globals in the test.
 
 `dev.sh` passes the host's LAN IP as `HOST_IP`; `setup.sh` uses it instead of the container's IP. `setup.sh` logs all tool output to `build/setup.log` and keeps the installer download in `build/downloads/`.
 
@@ -28,7 +33,7 @@ Desktop browser: run `--build-only`, then serve `build/app/` with any static ser
 ### Dev loop on the real TV
 Chrome DevTools cannot attach to a retail TV. Dev builds talk to `tools/devserver.mjs` (port 8790) on `DEV_HOST`.
 
-    node tools/devserver.mjs                                   # logs to stdout and build/tv.log
+    docker compose up -d devserver                             # dev.sh starts it too; logs in build/tv.log
     curl 'localhost:8790/send?keys=down,right,enter'           # inject key actions
     tools/tveval.sh 'document.title'                           # run JS on the TV, print result
     tools/tveval.sh '__bench(["right","right"], 250)'          # fps / p50 / p95 / max frame times

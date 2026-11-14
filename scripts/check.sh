@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Static checks. Run in the dev container: ./scripts/dev.sh ./scripts/check.sh
+# Static checks and unit tests. Run in the dev container: ./scripts/dev.sh ./scripts/check.sh
 #   --fix   apply safe lint fixes and formatting instead of reporting them
 set -uo pipefail
 
@@ -24,6 +24,9 @@ check shellcheck -S warning "${SHELL_FILES[@]}"
 
 step "shfmt: shell format"
 if [ "$FIX" = 1 ]; then check shfmt -i 2 -ci -w "${SHELL_FILES[@]}"; else check shfmt -i 2 -ci -d "${SHELL_FILES[@]}"; fi
+
+step "Unit tests: node --test"
+check node --test --test-reporter=dot 'test/**/*.test.mjs'
 
 [ "$STATUS" = 0 ] && printf '\nAll checks passed.\n' || printf '\nSome checks failed.\n'
 exit "$STATUS"
