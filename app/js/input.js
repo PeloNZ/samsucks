@@ -31,6 +31,30 @@ function flush() {
   if (action && handler) handler(action);
 }
 
+// Key presses and the dev remote's inject() both come through here.
+function dispatch(action, repeat) {
+  stats.keyAt = performance.now();
+  if (!NAV[action]) {
+    if (handler) handler(action);
+    return;
+  }
+  const now = performance.now();
+  const held = repeat || now - lastNavAt < 140;
+  lastNavAt = now;
+  if (held) {
+    setFast(true);
+    clearTimeout(fastTimer);
+    fastTimer = setTimeout(() => setFast(false), 220);
+  }
+  pending = action;
+  if (!scheduled) {
+    scheduled = true;
+    requestAnimationFrame(flush);
+    // rAF pauses when the page is occluded; never let input stall on it.
+    setTimeout(flush, 50);
+  }
+}
+
 document.addEventListener(
   'keydown',
   e => {
@@ -40,44 +64,14 @@ document.addEventListener(
     const tag = document.activeElement && document.activeElement.tagName;
     if (tag === 'INPUT' && action !== 'back' && action !== 'down' && action !== 'up' && action !== 'enter') return;
     e.preventDefault();
-    stats.keyAt = performance.now();
-
-    if (NAV[action]) {
-      const now = performance.now();
-      const held = e.repeat || now - lastNavAt < 140;
-      lastNavAt = now;
-      if (held) {
-        setFast(true);
-        clearTimeout(fastTimer);
-        fastTimer = setTimeout(() => setFast(false), 220);
-      }
-      pending = action;
-      if (!scheduled) {
-        scheduled = true;
-        requestAnimationFrame(flush);
-        // rAF pauses when the page is occluded; never let input stall on it.
-        setTimeout(flush, 50);
-      }
-      return;
-    }
-    if (handler) handler(action);
+    dispatch(action, e.repeat);
   },
   true,
 );
 
 // Feed an action through the same path as a real key press (dev remote).
 export function inject(action) {
-  stats.keyAt = performance.now();
-  if (NAV[action]) {
-    pending = action;
-    if (!scheduled) {
-      scheduled = true;
-      requestAnimationFrame(flush);
-      setTimeout(flush, 50);
-    }
-    return;
-  }
-  if (handler) handler(action);
+  dispatch(action, false);
 }
 
 document.addEventListener('keyup', () => {
