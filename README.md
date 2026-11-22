@@ -168,6 +168,52 @@ The UI also runs in desktop Chrome: `./scripts/build.sh` (unbundled `app/` does 
 </details>
 
 <details>
+<summary><b>Releases: set up signing secrets and cut a release</b></summary>
+
+A pushed `vX.Y.Z` tag makes the `release` workflow build, sign and publish `samsucks.wgt` as a
+GitHub Release. The workflow signs with the author certificate you already use, read from two
+repository secrets: `TIZEN_AUTHOR_P12_BASE64` and `TIZEN_CERT_PASSWORD`. It never makes a new
+certificate.
+
+**Set the secrets once** (on the computer that has the `samsucks-home` Docker volume; needs
+`docker` and a signed-in `gh`). The certificate is the file `tizen-sdk-data/keystore/author/samsucks.p12`
+in the volume. The password is the `TIZEN_CERT_PASSWORD` line in the repo's `.env`.
+
+```sh
+# Certificate: the volume is mounted read-only; the file goes straight to GitHub.
+docker run --rm -v samsucks-home:/v:ro alpine base64 /v/tizen-sdk-data/keystore/author/samsucks.p12 \
+  | tr -d '\n' | gh secret set TIZEN_AUTHOR_P12_BASE64 --repo PeloNZ/samsucks
+
+# Password: typed or pasted at a hidden prompt, so it is not echoed and not in shell history.
+printf 'Certificate password: ' && IFS= read -rs CERT_PW && echo
+printf '%s' "$CERT_PW" | gh secret set TIZEN_CERT_PASSWORD --repo PeloNZ/samsucks
+unset CERT_PW
+```
+
+**Keep a copy of the `.p12` and its password outside the volume.** Put both in a password
+manager or an encrypted backup. A Tizen TV installs an upgrade only if it carries the same author
+certificate as the installed app (ADR 0005). If you lose the `.p12` or its password, CI cannot sign
+upgrades. Every installed TV must then uninstall the app, and loses its settings, before the next
+upgrade. To export the file:
+
+```sh
+docker run --rm -v samsucks-home:/v:ro alpine cat /v/tizen-sdk-data/keystore/author/samsucks.p12 > samsucks.p12
+chmod 600 samsucks.p12
+```
+
+Move `samsucks.p12` into the backup, then delete it from the working folder.
+
+**Cut a release.** Set `version` in `app/config.xml` to `X.Y.Z` and merge it. Then tag and push:
+
+```sh
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+The tag must match the `config.xml` version, or the release job fails before it builds.
+</details>
+
+<details>
 <summary><b>How the code is laid out</b></summary>
 
 ```
