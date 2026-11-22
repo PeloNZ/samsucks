@@ -90,7 +90,7 @@ Tizen 4.0+ (2018 TVs, Chromium 56; the dev TV is a 2018 NU7090). The README meas
 
 ### Issue tracker
 
-Issues are local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+Issues are local markdown files under `project/<feature>/`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
