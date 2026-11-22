@@ -12,14 +12,14 @@ Run every script in the Ubuntu amd64 dev container (`compose.yaml`). It matches 
     ./scripts/dev.sh <command>                 # run one command, e.g. ./scripts/dev.sh ./scripts/setup.sh
     ./scripts/dev.sh ./scripts/check.sh        # Biome lint + format, Chromium 56 syntax, shellcheck, shfmt, unit tests
     ./scripts/dev.sh ./scripts/check.sh --fix  # apply lint fixes and formatting
-    ./scripts/dev.sh node --test 'test/**/*.test.mjs'                 # unit tests
-    ./scripts/dev.sh node --test --test-name-pattern='CueTrack' 'test/**/*.test.mjs'  # one test
+    ./scripts/dev.sh node --import ./test/setup.mjs --test 'test/**/*.test.mjs'                 # unit tests
+    ./scripts/dev.sh node --import ./test/setup.mjs --test --test-name-pattern='CueTrack' 'test/**/*.test.mjs'  # one test
     docker compose logs -f devserver           # TV logs from dev builds (also build/tv.log)
     npm run tizen-skills                       # on the host: install Samsung's tizen-sdk-skills for Claude Code
 
 `npm run tizen-skills` installs Samsung's Tizen skills, agents and hooks into `.claude/` (gitignored; hooks go in `.claude/settings.local.json`), pinned in `tools/install-tizen-skills.sh`. `package.json` holds scripts only; the app has no npm dependencies.
 
-Unit tests use Node's built-in `node:test` and `node:assert` (no npm). They import app modules directly from `app/js`. Modules that touch `document`, `window` or `localStorage` at load need small fakes for those globals in the test.
+Unit tests use Node's built-in `node:test` and `node:assert` (no npm). They import app modules directly from `app/js`. Modules that touch `document`, `window` or `localStorage` at load need small fakes for those globals in the test. Build globals come from `test/setup.mjs`.
 
 `dev.sh` passes the host's LAN IP as `HOST_IP`; `setup.sh` uses it instead of the container's IP. `setup.sh` logs all tool output to `build/setup.log` and keeps the installer download in `build/downloads/`.
 
@@ -34,7 +34,7 @@ All TV commands read `.env` (made by `./scripts/setup.sh`): `TV_IP`, `TV_SDB_POR
 
 A release build runs on the TV alone: it needs no dev host. Install it once from any computer with Developer Mode on the TV pointed at that computer, then turn Developer Mode off. An upgrade must use the same author certificate (the `samsucks` profile in the `samsucks-home` volume), or uninstall the app first.
 
-Desktop browser: run `--build-only`, then serve `build/app/` with any static server. The UI zooms the 1920×1080 layout to fit the window and uses `<video>` instead of AVPlay.
+Desktop browser: unbundled `app/` does not run (it needs the build globals). Run `./scripts/deploy.sh --build-only` (or `./scripts/build.sh`), then serve `build/app/` with any static server. The UI zooms the 1920×1080 layout to fit the window and uses `<video>` instead of AVPlay.
 
 ### Dev loop on the real TV
 Chrome DevTools cannot attach to a retail TV. Dev builds talk to `tools/devserver.mjs` (port 8790) on `DEV_HOST`.
@@ -50,16 +50,16 @@ Chrome DevTools cannot attach to a retail TV. Dev builds talk to `tools/devserve
 
 ## Build
 
-`deploy.sh` copies `app/` to `build/app`, then:
-- dev: rewrites `build/app/js/config.js` (`DEV`, `DEV_HOST`, `DEV_PLEX_URL`, `VERSION`).
-- release: sets `VERSION` from `app/config.xml`.
-- both: bundles `js/main.js` with esbuild (`--format=iife --target=chrome56`) into one classic script, `build/app/js/main.js`, and removes `type="module"` from `index.html`.
+`scripts/build.sh` (called by `deploy.sh`) copies `app/` to `build/app`, then bundles `js/main.js` with esbuild (`--format=iife --target=chrome56 --minify-syntax`) into one classic script, `build/app/js/main.js`, and removes `type="module"` from `index.html`.
 
-Edit `app/js/config.js` only for defaults. Never edit `build/`. Load `app/js/dev/` only by dynamic `import()` behind `DEV` (as `app.js` does), so release builds never run it. App version, app ID and `required_version` live in `app/config.xml`.
+Code reads four free globals that `build.sh` sets with esbuild `--define`: `__DEV__`, `__DEV_HOST__`, `__DEV_PLEX_URL__`, `__VERSION__`. Release: `__DEV__` false, host and Plex URL empty, version from `app/config.xml`. Dev (`--dev`): host from `DEV_HOST`; Plex URL from `PLEX_SERVER_URL` only when `DEV_SKIP_LOGIN=1`. `--minify-syntax` makes esbuild drop the dead dev branches, including the dynamic `import()` of `app/js/dev/`, so a release bundle holds no dev code. `check.sh` builds both bundles and fails if a release bundle contains `startDevRemote` or the devserver paths, or a dev bundle lacks `startDevRemote`.
+
+Never edit `build/`. Load `app/js/dev/` only by dynamic `import()` behind `__DEV__` (as `app.js` does). Unit tests run with `node --import ./test/setup.mjs`, which sets the four globals to release values. App version, app ID and `required_version` live in `app/config.xml`.
 
 ## Architecture (app/js)
 
 - `main.js` → `app.js` `boot()`: restores the session from `util/store.js` (localStorage, `ss.` prefix), paints Home from cache, then verifies the server in the background. A 401 sends the user to Login.
+- Build globals: `__DEV__`, `__DEV_HOST__`, `__DEV_PLEX_URL__` and `__VERSION__` are free globals, not imports. There is no config module. Gate dev-only code on `__DEV__` so the bundler removes it from release builds.
 - `router.js`: a screen stack. A screen is `{ el, onKey(action) -> bool?, onShow?, onHide?, destroy? }`. Screens below the top stay in the DOM, hidden, so Back is instant. Unhandled keys go to the global handler, then `back`.
 - `nav.js`: the one place that opens screens. Screens import `nav.js`, not each other.
 - `input.js`: maps keys to actions via `platform/tizen.js`. Arrow actions apply at most once per animation frame (extra presses collapse). A held key adds `.fast` to `<html>` to shorten transitions. `inject()` feeds the dev remote through the same path.
