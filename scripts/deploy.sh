@@ -29,34 +29,9 @@ for arg in "$@"; do
   esac
 done
 
-# --- build: copy app/, then bundle the JS modules into one script ------------
-command -v esbuild >/dev/null || {
-  echo "esbuild not found. Run this in the dev container: ./scripts/dev.sh ./scripts/deploy.sh $*" >&2
-  exit 1
-}
+# --- build ---------------------------------------------------------------------
+if [ "$DEV" = 1 ]; then "$ROOT/scripts/build.sh" --dev; else "$ROOT/scripts/build.sh"; fi
 OUT="$ROOT/build/app"
-rm -rf "$OUT" && mkdir -p "$ROOT/build"
-cp -R "$ROOT/app" "$OUT"
-VERSION=$(sed -n 's/.*widget.* version="\([^"]*\)".*/\1/p' "$ROOT/app/config.xml")
-if [ "$DEV" = 1 ]; then
-  PLEX_URL=""
-  [ "${DEV_SKIP_LOGIN:-0}" = 1 ] && PLEX_URL="${PLEX_SERVER_URL:-}"
-  cat >"$OUT/js/config.js" <<EOF
-export const DEV = true;
-export const DEV_HOST = '${DEV_HOST:-}';
-export const DEV_PLEX_URL = '$PLEX_URL';
-export const VERSION = '$VERSION';
-EOF
-else
-  sed -i.bak "s/^export const VERSION = .*/export const VERSION = '$VERSION';/" "$OUT/js/config.js" && rm "$OUT/js/config.js.bak"
-fi
-# Tizen 4.0 TVs run Chromium 56, which has no ES modules: bundle to one classic
-# script and lower newer syntax. In a release build, js/dev stays in the bundle
-# but never runs, because app.js imports it only when DEV is true.
-esbuild "$OUT/js/main.js" --bundle --format=iife --target=chrome56 --log-level=warning --outfile="$OUT/bundle.js"
-rm -rf "$OUT/js" && mkdir "$OUT/js" && mv "$OUT/bundle.js" "$OUT/js/main.js"
-sed -i.bak 's| type="module"||' "$OUT/index.html" && rm "$OUT/index.html.bak"
-echo "built $([ "$DEV" = 1 ] && echo dev || echo release) $VERSION → build/app"
 [ "$INSTALL" = 1 ] || exit 0
 
 # --- package, sign, install, launch -------------------------------------------
