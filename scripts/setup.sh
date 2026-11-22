@@ -186,8 +186,14 @@ bold "3/4  Signing certificate"
 PROFILE="$(get_env TIZEN_SIGN_PROFILE)"
 PROFILE="${PROFILE:-samsucks}"
 set_env TIZEN_SIGN_PROFILE "$PROFILE"
-if "$TIZEN" security-profiles list 2>/dev/null | grep -q "^$PROFILE "; then
+# shellcheck source=scripts/signing.sh
+source "$ROOT/scripts/signing.sh"
+signing_note() { ok "$*"; }
+SIGNING_LOG="$LOG"
+P12="$TIZEN_DATA/keystore/author/$PROFILE.p12"
+if signing_profile_exists "$PROFILE"; then
   ok "profile '$PROFILE' already exists"
+  PW="$(get_env TIZEN_CERT_PASSWORD)"
 else
   PW="$(get_env TIZEN_CERT_PASSWORD)"
   # The CLI treats a stored password that decodes as base64 as encrypted, and
@@ -196,21 +202,8 @@ else
   case "$PW" in ss-*) ;; *) PW="ss-$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')" ;; esac
   set_env TIZEN_CERT_PASSWORD "$PW"
   "$TIZEN" certificate -a "$PROFILE" -p "$PW" -f "$PROFILE" >>"$LOG" 2>&1
-  "$TIZEN" security-profiles add -n "$PROFILE" -a "$TIZEN_DATA/keystore/author/$PROFILE.p12" -p "$PW" >>"$LOG" 2>&1
-  ok "created profile '$PROFILE' (password saved in .env)"
 fi
-# Without a desktop keyring (a container, a headless server) the CLI writes no
-# .pwd files, and signing fails with "Invalid password". Put the passwords in
-# profiles.xml instead. The distributor password is Samsung's public default.
-PROFILES="$TIZEN_DATA/profile/profiles.xml"
-if [ ! -f "$TIZEN_DATA/keystore/author/$PROFILE.pwd" ] && grep -q "$PROFILE\.pwd\"" "$PROFILES"; then
-  PW="$(get_env TIZEN_CERT_PASSWORD)" PROFILE="$PROFILE" perl -pi -e '
-    s{password="[^"]*/keystore/author/\Q$ENV{PROFILE}\E\.pwd"}{password="$ENV{PW}"}g;
-    s{password="[^"]*/tizen-distributor-signer\.pwd"}{password="tizenpkcs12passfordsigner"}g;
-  ' "$PROFILES"
-  ok "stored the signing passwords in the profile (no keyring)"
-fi
-"$TIZEN" cli-config "profiles.path=$TIZEN_DATA/profile/profiles.xml" >>"$LOG" 2>&1
+ensure_signing_profile "$PROFILE" "$P12" "$PW"
 
 # --- 4. Connect -------------------------------------------------------------------
 bold "4/4  Connecting to the TV"
