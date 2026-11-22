@@ -1,6 +1,5 @@
 // Perf overlay: fps, worst frame and key-to-frame latency. On in dev builds
 // (and reported to the devserver), toggleable from Settings in release builds.
-import { DEV } from '../config.js';
 import { h, setText } from '../util/dom.js';
 import { stats } from '../input.js';
 import { perf } from '../util/log.js';
@@ -74,5 +73,5 @@ export function hudEnabled() {
 
 export function initHud(getScreenName) {
   screenName = getScreenName;
-  setHud(store.get('hud', DEV), false);
+  setHud(store.get('hud', __DEV__), false);
 }

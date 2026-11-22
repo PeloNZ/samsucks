@@ -1,6 +1,6 @@
 # 06: Release workflow on version tags
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 03, 04, 05
 Parent: `project/build-ci/spec.md`
 
@@ -22,3 +22,11 @@ Steps, in order: compare the tag (without `v`) to the `config.xml` version and f
 - [ ] Signing works on the runner. If it fails with "keystore password was incorrect", fix it with the `profiles.xml` password patch from ticket 04 and report the cause.
 - [ ] Report whether signing works without the TV extension packages. Drop them from the CI install only if it does.
 - [ ] A Release exists for a matching tag with `samsucks.wgt` attached.
+
+## Comments
+
+Implemented on `build-ci` (merges 47dc0e9, 64451c3): `.github/workflows/release.yml`, `scripts/tizen-version`. The tag-versus-`config.xml` check ran locally: `v0.1.0` passes; `v0.2.0` fails naming both versions. Actions pinned by SHA; `contents: write` on the release job only; no `tizen certificate` call; the p12 is decoded into `RUNNER_TEMP`, mounted read-only and removed in an `always()` step. Code review found the cache-miss path failed (an empty `tizen-sdk` directory); fixed in 64451c3.
+
+Not checked (needs GitHub and the real secrets): any workflow run; a tag on a failing commit makes no Release; signing on the runner (if it fails with "keystore password was incorrect", the `profiles.xml` patch from ticket 04 is already in `package.sh`); cold and cached timings; whether signing works without the TV extension packages (the install still installs them).
+
+A cache saved on a tag run is scoped to that tag, so a later tag would miss it (story 26). `.github/workflows/tizen-cache.yml` seeds the cache from `main` under the same key: on a push to `main` that changes `scripts/tizen-version` or `scripts/install-tizen.sh`, weekly (which keeps the cache from the 7-day unused eviction), and on `workflow_dispatch`. Not run on GitHub. After the first push to `main`, run it once by hand. The cache is about 4 GB; the repo limit is 10 GB, shared with the Docker layer cache. Also `package.sh` passes the password as a command-line argument (`tizen security-profiles add -p`); GitHub masks it in logs.

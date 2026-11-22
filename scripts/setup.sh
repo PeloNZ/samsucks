@@ -6,7 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV="$ROOT/.env"
-TIZEN_VERSION=6.1
+TIZEN_VERSION="$(cat "$ROOT/scripts/tizen-version")"
 
 # Tool output goes to build/setup.log, not the terminal. Each run starts a new log.
 LOG="$ROOT/build/setup.log"
@@ -47,11 +47,6 @@ set_env() {
 
 # --- 1. Tizen command-line tools ----------------------------------------------
 bold "1/4  Samsung Tizen tools"
-case "$(uname -s)" in
-  Darwin) INSTALLER="web-cli_Tizen_Studio_${TIZEN_VERSION}_macos-64.bin" ;;
-  Linux) INSTALLER="web-cli_Tizen_Studio_${TIZEN_VERSION}_ubuntu-64.bin" ;;
-  *) fail "Only macOS and Linux are supported (on Windows, use WSL)." ;;
-esac
 [ -f "$ENV" ] || cp "$ROOT/.env.example" "$ENV"
 TIZEN_STUDIO="$(get_env TIZEN_STUDIO)"
 TIZEN_STUDIO="${TIZEN_STUDIO/\$HOME/$HOME}"
@@ -66,46 +61,11 @@ for f in "$TIZEN" "$SDB" "$PM" "$TIZEN_STUDIO/jdk" "$HOME/.package-manager/jdk/C
 done
 [ -f "$TIZEN_STUDIO/sdk.info" ] && log "sdk.info: $(tr '\n' ' ' <"$TIZEN_STUDIO/sdk.info")"
 
-if [ -x "$TIZEN" ]; then
-  ok "already installed in $TIZEN_STUDIO"
-else
-  # The installer refuses an existing folder (and still exits 0).
-  [ ! -e "$TIZEN_STUDIO" ] || fail "$TIZEN_STUDIO exists but has no tizen CLI (a failed install?). Move it aside, then run this again."
-  # Kept across runs, so a failed install does not download again.
-  DL="$ROOT/build/downloads/$INSTALLER"
-  if [ -f "$DL" ]; then
-    ok "using downloaded $INSTALLER"
-  else
-    echo "  Downloading $INSTALLER (~270 MB)…"
-    mkdir -p "$(dirname "$DL")"
-    curl -fL -C - --progress-bar -o "$DL.part" "https://download.tizen.org/sdk/Installer/tizen-studio_${TIZEN_VERSION}/$INSTALLER"
-    mv "$DL.part" "$DL"
-  fi
-  chmod +x "$DL"
-  # On Apple Silicon, macOS kills the arm64e slice of the installer's bundled
-  # unzip; under Rosetta it runs the x86_64 slice instead.
-  if [ "$(uname -sm)" = "Darwin arm64" ]; then
-    run arch -x86_64 "$DL" --accept-license "$TIZEN_STUDIO"
-  else run "$DL" --accept-license "$TIZEN_STUDIO"; fi
-  log "tools/: $(ls "$TIZEN_STUDIO/tools" 2>&1 | tr '\n' ' ')"
-  # The installer exits 0 even when it fails.
-  [ -x "$TIZEN" ] || fail "The Tizen installer failed: $TIZEN is missing."
-  ok "installed in $TIZEN_STUDIO"
-fi
+# Prints its own progress and failure messages; `||` keeps the ERR trap from adding a second one.
+export LOG
+"$ROOT/scripts/install-tizen.sh" "$TIZEN_STUDIO" "$TIZEN_VERSION" || exit 1
 TIZEN_DATA=$(sed -n 's/^TIZEN_SDK_DATA_PATH=//p' "$TIZEN_STUDIO/sdk.info")
 log "TIZEN_DATA=$TIZEN_DATA"
-
-PACKAGES="cert-add-on TV-SAMSUNG-Public-WebAppDevelopment TV-SAMSUNG-Extension-Tools Certificate-Manager"
-PKGS=$("$PM" show-pkgs 2>&1 || true)
-log "show-pkgs: $PKGS"
-INSTALLED=$(awk '$1 == "i" { print $2 }' <<<"$PKGS")
-MISSING=""
-for p in $PACKAGES; do echo "$INSTALLED" | grep -qx "$p" || MISSING="$MISSING $p"; done
-if [ -n "$MISSING" ]; then
-  echo "  Installing Samsung TV extensions (a few minutes)…"
-  run "$PM" install --accept-license $MISSING
-fi
-ok "Samsung TV extensions"
 
 # --- 2. Find the TV -------------------------------------------------------------
 bold "2/4  Finding your TV"
@@ -186,8 +146,14 @@ bold "3/4  Signing certificate"
 PROFILE="$(get_env TIZEN_SIGN_PROFILE)"
 PROFILE="${PROFILE:-samsucks}"
 set_env TIZEN_SIGN_PROFILE "$PROFILE"
-if "$TIZEN" security-profiles list 2>/dev/null | grep -q "^$PROFILE "; then
+# shellcheck source=scripts/signing.sh
+source "$ROOT/scripts/signing.sh"
+signing_note() { ok "$*"; }
+SIGNING_LOG="$LOG"
+P12="$TIZEN_DATA/keystore/author/$PROFILE.p12"
+if signing_profile_exists "$PROFILE"; then
   ok "profile '$PROFILE' already exists"
+  PW="$(get_env TIZEN_CERT_PASSWORD)"
 else
   PW="$(get_env TIZEN_CERT_PASSWORD)"
   # The CLI treats a stored password that decodes as base64 as encrypted, and
@@ -196,21 +162,8 @@ else
   case "$PW" in ss-*) ;; *) PW="ss-$(od -An -N12 -tx1 /dev/urandom | tr -d ' \n')" ;; esac
   set_env TIZEN_CERT_PASSWORD "$PW"
   "$TIZEN" certificate -a "$PROFILE" -p "$PW" -f "$PROFILE" >>"$LOG" 2>&1
-  "$TIZEN" security-profiles add -n "$PROFILE" -a "$TIZEN_DATA/keystore/author/$PROFILE.p12" -p "$PW" >>"$LOG" 2>&1
-  ok "created profile '$PROFILE' (password saved in .env)"
 fi
-# Without a desktop keyring (a container, a headless server) the CLI writes no
-# .pwd files, and signing fails with "Invalid password". Put the passwords in
-# profiles.xml instead. The distributor password is Samsung's public default.
-PROFILES="$TIZEN_DATA/profile/profiles.xml"
-if [ ! -f "$TIZEN_DATA/keystore/author/$PROFILE.pwd" ] && grep -q "$PROFILE\.pwd\"" "$PROFILES"; then
-  PW="$(get_env TIZEN_CERT_PASSWORD)" PROFILE="$PROFILE" perl -pi -e '
-    s{password="[^"]*/keystore/author/\Q$ENV{PROFILE}\E\.pwd"}{password="$ENV{PW}"}g;
-    s{password="[^"]*/tizen-distributor-signer\.pwd"}{password="tizenpkcs12passfordsigner"}g;
-  ' "$PROFILES"
-  ok "stored the signing passwords in the profile (no keyring)"
-fi
-"$TIZEN" cli-config "profiles.path=$TIZEN_DATA/profile/profiles.xml" >>"$LOG" 2>&1
+ensure_signing_profile "$PROFILE" "$P12" "$PW"
 
 # --- 4. Connect -------------------------------------------------------------------
 bold "4/4  Connecting to the TV"

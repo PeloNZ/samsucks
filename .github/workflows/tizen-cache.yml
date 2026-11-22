@@ -1,0 +1,79 @@
+name: tizen-cache
+
+# Seeds the Tizen CLI install cache from main. GitHub lets a tag run restore only caches saved
+# on its own ref or on the default branch, so a cache saved by release.yml on a tag is never
+# found by the next tag. This workflow saves it on main under the key release.yml restores.
+# The key, paths and install step must match release.yml.
+# The weekly run restores the cache, which keeps it from the 7-day unused eviction.
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/tizen-version
+      - scripts/install-tizen.sh
+      - .github/workflows/tizen-cache.yml
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the Tizen version
+        id: tizen
+        run: echo "version=$(cat scripts/tizen-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare the Tizen home
+        run: |
+          mkdir -p "$RUNNER_TEMP/dev-home/.package-manager"
+          echo "DEV_HOME=$RUNNER_TEMP/dev-home" >> "$GITHUB_ENV"
+
+      - name: Restore the Tizen CLI install
+        id: tizen-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/dev-home/tizen-sdk
+            ${{ runner.temp }}/dev-home/.package-manager
+          key: tizen-cli-${{ steps.tizen.outputs.version }}-linux-amd64
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.tizen-cache.outputs.cache-hit != 'true'
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        if: steps.tizen-cache.outputs.cache-hit != 'true'
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: samsucks-dev
+          cache-from: type=gha
+
+      - name: Install the Tizen CLI
+        if: steps.tizen-cache.outputs.cache-hit != 'true'
+        env:
+          TIZEN_VERSION: ${{ steps.tizen.outputs.version }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro \
+            -e HOME=/home/dev -v "$DEV_HOME":/home/dev \
+            -v "$PWD":/work -w /work samsucks-dev \
+            ./scripts/install-tizen.sh /home/dev/tizen-sdk "$TIZEN_VERSION"
+
+      - name: Save the Tizen CLI install
+        if: steps.tizen-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/dev-home/tizen-sdk
+            ${{ runner.temp }}/dev-home/.package-manager
+          key: tizen-cli-${{ steps.tizen.outputs.version }}-linux-amd64

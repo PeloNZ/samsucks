@@ -163,26 +163,72 @@ tools/tveval.sh "__css('.hero-art{display:none}')"           # A/B test a CSS ch
 With `DEV_SKIP_LOGIN=1` and `PLEX_SERVER_URL` in `.env`, dev builds skip sign-in and
 use a server that allows unauthenticated local-network access.
 
-The UI also runs in desktop Chrome: `./scripts/deploy.sh --build-only`, then serve
+The UI also runs in desktop Chrome: `./scripts/build.sh` (unbundled `app/` does not run), then serve
 `build/app/` with any static server. It uses a `<video>` element instead of AVPlay there.
+</details>
+
+<details>
+<summary><b>Releases: set up signing secrets and cut a release</b></summary>
+
+A pushed `vX.Y.Z` tag makes the `release` workflow build, sign and publish `samsucks.wgt` as a
+GitHub Release. The workflow signs with the author certificate you already use, read from two
+repository secrets: `TIZEN_AUTHOR_P12_BASE64` and `TIZEN_CERT_PASSWORD`. It never makes a new
+certificate.
+
+**Set the secrets once** (on the computer that has the `samsucks-home` Docker volume; needs
+`docker` and a signed-in `gh`). The certificate is the file `tizen-sdk-data/keystore/author/samsucks.p12`
+in the volume. The password is the `TIZEN_CERT_PASSWORD` line in the repo's `.env`.
+
+```sh
+# Certificate: the volume is mounted read-only; the file goes straight to GitHub.
+docker run --rm -v samsucks-home:/v:ro alpine base64 /v/tizen-sdk-data/keystore/author/samsucks.p12 \
+  | tr -d '\n' | gh secret set TIZEN_AUTHOR_P12_BASE64 --repo PeloNZ/samsucks
+
+# Password: typed or pasted at a hidden prompt, so it is not echoed and not in shell history.
+printf 'Certificate password: ' && IFS= read -rs CERT_PW && echo
+printf '%s' "$CERT_PW" | gh secret set TIZEN_CERT_PASSWORD --repo PeloNZ/samsucks
+unset CERT_PW
+```
+
+**Keep a copy of the `.p12` and its password outside the volume.** Put both in a password
+manager or an encrypted backup. A Tizen TV installs an upgrade only if it carries the same author
+certificate as the installed app (ADR 0005). If you lose the `.p12` or its password, CI cannot sign
+upgrades. Every installed TV must then uninstall the app, and loses its settings, before the next
+upgrade. To export the file:
+
+```sh
+docker run --rm -v samsucks-home:/v:ro alpine cat /v/tizen-sdk-data/keystore/author/samsucks.p12 > samsucks.p12
+chmod 600 samsucks.p12
+```
+
+Move `samsucks.p12` into the backup, then delete it from the working folder. Never commit it.
+
+**Cut a release.** Set `version` in `app/config.xml` to `X.Y.Z` and merge it. Then tag and push:
+
+```sh
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+The tag must match the `config.xml` version, or the release job fails before it builds.
 </details>
 
 <details>
 <summary><b>How the code is laid out</b></summary>
 
 ```
-app/            the whole TV app; deploy.sh copies it to build/app and packages it
+app/            the whole TV app; build.sh copies it to build/app; package.sh signs it
   js/screens/   home, library, detail, player, search, settings, login
   js/ui/        rows, grids, tiles, image loader, backdrop, perf overlay
   js/plex/      plex.tv sign-in and Plex Media Server API
   js/platform/  Tizen keys and device info, AVPlay / <video> player
-scripts/        setup.sh (one-time) and deploy.sh (build + install)
+scripts/        setup.sh (one-time), build.sh, package.sh (signed .wgt, no TV) and deploy.sh (build + package + install)
 tools/          dev server, TV eval, network remote
 ```
 
-There's no bundler. The TV's browser (Chromium 69+ on Tizen 5.5+) runs ES modules
-natively, and `deploy.sh` adds `<link rel="modulepreload">` tags so every module loads
-in parallel (about 0.9 s cold start, versus 0.8 s for a minified bundle).
+`build.sh` bundles `app/js/main.js` with esbuild into one classic script
+(`--format=iife --target=chrome56`), because Tizen 4.0 TVs run Chromium 56, which has no ES
+modules. esbuild lowers new syntax but adds no polyfills. A release bundle holds no dev code.
 </details>
 
 <details>

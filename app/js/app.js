@@ -1,5 +1,4 @@
 // Boot: restore the session and go straight to Home when we can; otherwise sign in.
-import { DEV, DEV_HOST, DEV_PLEX_URL, VERSION } from './config.js';
 import * as router from './router.js';
 import { isTizen, registerKeys } from './platform/tizen.js';
 import { session, reconnect, signOut } from './session.js';
@@ -55,15 +54,15 @@ function fitWindow() {
 
 function start() {
   // A release build installed over a dev build must not inherit its LAN shortcut.
-  if (!DEV && session.token === 'lan-dev') {
+  if (!__DEV__ && session.token === 'lan-dev') {
     signOut();
     store.set('hud', undefined);
   }
-  if (DEV && DEV_PLEX_URL && !session.token) {
+  if (__DEV__ && __DEV_PLEX_URL__ && !session.token) {
     // Dev shortcut for servers that allow unauthenticated LAN access.
     store.set('token', 'lan-dev');
     store.set('user', { title: 'LAN (dev)' });
-    store.set('server', { uri: DEV_PLEX_URL, token: '', name: 'Plex (LAN dev)', id: 'lan-dev' });
+    store.set('server', { uri: __DEV_PLEX_URL__, token: '', name: 'Plex (LAN dev)', id: 'lan-dev' });
     location.reload();
     return;
   }
@@ -76,8 +75,8 @@ function start() {
 }
 
 export function boot() {
-  if (DEV) window.__ss = { router, session, nav };
-  log('boot', VERSION, navigator.userAgent);
+  if (__DEV__) window.__ss = { router, session, nav };
+  log('boot', __VERSION__, navigator.userAgent);
   registerKeys();
   if (!isTizen) {
     fitWindow();
@@ -86,8 +85,8 @@ export function boot() {
   router.init(document.getElementById('app'));
   initHud(() => (router.top() && router.top().name) || '');
   window.addEventListener('samsucks:restart', start);
-  // Dev builds only. Release bundles include js/dev/ but never run it.
-  if (DEV && DEV_HOST) import('./dev/remote.js').then(m => m.startDevRemote());
+  // Dev builds only. esbuild folds __DEV__ to false in release, so the bundle holds no js/dev/ code.
+  if (__DEV__ && __DEV_HOST__) import('./dev/remote.js').then(m => m.startDevRemote());
   start();
   const splash = document.getElementById('splash');
   setTimeout(() => {

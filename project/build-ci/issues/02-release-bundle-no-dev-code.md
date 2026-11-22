@@ -1,6 +1,6 @@
 # 02: Release bundles carry no dev code
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Parent: `project/build-ci/spec.md`
 
@@ -28,3 +28,11 @@ Unbundled `app/` in a desktop browser stops working. The desktop path is: build,
 - [ ] Settings shows the right version and `(dev)` only in a dev build.
 - [ ] CLAUDE.md "Build" and "Architecture" sections match the new build.
 - [ ] `check.sh` passes.
+
+## Comments
+
+Implemented on `build-ci` (merge aa18dc4). The `check.sh` build-output step went in first and failed on the old release build (`startDevRemote`, `/cmd` and `/log` found). After the change it passes. `app/js/config.js` is gone; seven modules read the four globals; `test/setup.mjs` is loaded with `node --import`; CLAUDE.md updated. `check.sh` exit 0.
+
+Added beyond the ticket: `--minify-syntax` in `build.sh` (`--define` alone left `if (false)` branches and the dev fetch code in the release bundle). The check step builds the dev bundle with `DEV_HOST=localhost:8790`, because the dev remote only loads when the host is non-empty. The path grep matches `"/cmd"` and `"/log"` with quotes, to skip esbuild's comment lines.
+
+Not checked (needs the TV): a dev build sends logs and takes remote keys (`deploy.sh --dev`, `tools/tveval.sh`); Settings shows the right version and `(dev)` only in a dev build.

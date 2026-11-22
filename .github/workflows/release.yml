@@ -1,0 +1,122 @@
+name: release
+
+# A vX.Y.Z tag becomes a signed GitHub Release with samsucks.wgt. Signs with the existing
+# author certificate from secrets and never makes one (docs/adr/0005).
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare the tag with the config.xml version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          config_version=$(sed -n 's/.*widget.* version="\([^"]*\)".*/\1/p' app/config.xml)
+          tag_version="${TAG#v}"
+          if [ "$tag_version" != "$config_version" ]; then
+            echo "::error::Tag $TAG is version $tag_version, but app/config.xml is version $config_version."
+            exit 1
+          fi
+          echo "Tag $TAG matches app/config.xml version $config_version."
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # The same Dockerfile as the dev container and the check workflow.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: samsucks-dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run check.sh
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro \
+            -v "$PWD":/work -w /work samsucks-dev ./scripts/check.sh
+
+      - name: Read the Tizen version
+        id: tizen
+        run: echo "version=$(cat scripts/tizen-version)" >> "$GITHUB_OUTPUT"
+
+      # Only the install is cached, never the signing data (tizen-sdk-data, .tizen).
+      # tizen-cache.yml seeds this cache from main; keep its key and paths in step with these.
+      # Containers run as the runner user, so files in the workspace and in the mounted home
+      # stay owned by it. /etc/passwd gives that uid a name inside the image.
+      # tizen-sdk is not made here: install-tizen.sh refuses an existing folder with no CLI.
+      - name: Prepare the Tizen home
+        run: |
+          mkdir -p "$RUNNER_TEMP/dev-home/.package-manager"
+          echo "DEV_HOME=$RUNNER_TEMP/dev-home" >> "$GITHUB_ENV"
+
+      - name: Restore the Tizen CLI install
+        id: tizen-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/dev-home/tizen-sdk
+            ${{ runner.temp }}/dev-home/.package-manager
+          key: tizen-cli-${{ steps.tizen.outputs.version }}-linux-amd64
+
+      - name: Install the Tizen CLI
+        env:
+          TIZEN_VERSION: ${{ steps.tizen.outputs.version }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro \
+            -e HOME=/home/dev -v "$DEV_HOME":/home/dev \
+            -v "$PWD":/work -w /work samsucks-dev \
+            ./scripts/install-tizen.sh /home/dev/tizen-sdk "$TIZEN_VERSION"
+
+      - name: Save the Tizen CLI install
+        if: steps.tizen-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/dev-home/tizen-sdk
+            ${{ runner.temp }}/dev-home/.package-manager
+          key: tizen-cli-${{ steps.tizen.outputs.version }}-linux-amd64
+
+      # The certificate lives in RUNNER_TEMP, outside the repo, and is never uploaded.
+      - name: Decode the author certificate
+        env:
+          TIZEN_AUTHOR_P12_BASE64: ${{ secrets.TIZEN_AUTHOR_P12_BASE64 }}
+        run: |
+          umask 077
+          mkdir "$RUNNER_TEMP/author"
+          printf '%s' "$TIZEN_AUTHOR_P12_BASE64" | base64 -d > "$RUNNER_TEMP/author/samsucks.p12"
+
+      - name: Build and package
+        env:
+          TIZEN_CERT_PASSWORD: ${{ secrets.TIZEN_CERT_PASSWORD }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro \
+            -e HOME=/home/dev -v "$DEV_HOME":/home/dev \
+            -e TIZEN_AUTHOR_P12=/author/samsucks.p12 -e TIZEN_CERT_PASSWORD \
+            -v "$RUNNER_TEMP/author":/author:ro \
+            -v "$PWD":/work -w /work samsucks-dev \
+            bash -c './scripts/build.sh && ./scripts/package.sh'
+
+      - name: Remove the author certificate
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/author"
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" build/samsucks.wgt --verify-tag --title "$TAG" --generate-notes

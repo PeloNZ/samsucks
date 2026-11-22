@@ -1,6 +1,6 @@
 # 05: Check workflow on PRs and pushes to main
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Parent: `project/build-ci/spec.md`
 
@@ -17,3 +17,9 @@ A GitHub Actions workflow on the PeloNZ fork that runs `check.sh` on every pull 
 - [ ] A PR on the fork with a failing check (for example a Biome error) makes the job fail; a clean PR passes. Report both runs.
 - [ ] A second run on the same Dockerfile reuses the cached layers: report both durations.
 - [ ] The workflow holds no secrets.
+
+## Comments
+
+Implemented on `build-ci` (merge fd47aa7): `.github/workflows/check.yml`. Triggers: `pull_request`, push to `main`. Read-only `contents`, no secrets, actions pinned by SHA, buildx with the GHA layer cache, `check.sh` runs as `dev`. No automated tests apply. The YAML parses; the same `docker run` the workflow uses passed `check.sh`.
+
+Not checked (no GitHub run was allowed): a failing PR fails and a clean PR passes; cached-layer run times on a second run.
