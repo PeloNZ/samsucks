@@ -163,7 +163,7 @@ tools/tveval.sh "__css('.hero-art{display:none}')"           # A/B test a CSS ch
 With `DEV_SKIP_LOGIN=1` and `PLEX_SERVER_URL` in `.env`, dev builds skip sign-in and
 use a server that allows unauthenticated local-network access.
 
-The UI also runs in desktop Chrome: `./scripts/deploy.sh --build-only` (unbundled `app/` does not run), then serve
+The UI also runs in desktop Chrome: `./scripts/build.sh` (unbundled `app/` does not run), then serve
 `build/app/` with any static server. It uses a `<video>` element instead of AVPlay there.
 </details>
 
@@ -171,17 +171,17 @@ The UI also runs in desktop Chrome: `./scripts/deploy.sh --build-only` (unbundle
 <summary><b>How the code is laid out</b></summary>
 
 ```
-app/            the whole TV app; deploy.sh copies it to build/app and packages it
+app/            the whole TV app; build.sh copies it to build/app; package.sh signs it
   js/screens/   home, library, detail, player, search, settings, login
   js/ui/        rows, grids, tiles, image loader, backdrop, perf overlay
   js/plex/      plex.tv sign-in and Plex Media Server API
   js/platform/  Tizen keys and device info, AVPlay / <video> player
-scripts/        setup.sh (one-time) and deploy.sh (build + install)
+scripts/        setup.sh (one-time), build.sh, package.sh (signed .wgt, no TV) and deploy.sh (build + package + install)
 tools/          dev server, TV eval, network remote
 ```
 
 There's no bundler. The TV's browser (Chromium 69+ on Tizen 5.5+) runs ES modules
-natively, and `deploy.sh` adds `<link rel="modulepreload">` tags so every module loads
+natively, and the build adds `<link rel="modulepreload">` tags so every module loads
 in parallel (about 0.9 s cold start, versus 0.8 s for a minified bundle).
 </details>
 
