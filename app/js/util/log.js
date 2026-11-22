@@ -1,4 +1,3 @@
-import { DEV, DEV_HOST } from '../config.js';
 // Logging. In dev builds every line is also batched to the devserver on the Mac,
 // since the TV gives us no usable console.
 const queue = [];
@@ -25,14 +24,14 @@ function flush() {
   if (!queue.length) return;
   const body = JSON.stringify(queue.splice(0));
   try {
-    fetch('http://' + DEV_HOST + '/log', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
+    fetch('http://' + __DEV_HOST__ + '/log', { method: 'POST', body, headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
   } catch (e) {
     /* devserver not running */
   }
 }
 
 function emit(level, args) {
-  if (!DEV || !DEV_HOST) return;
+  if (!__DEV__ || !__DEV_HOST__) return;
   queue.push({ t: Date.now(), level, msg: stringify(args) });
   if (!timer) timer = setTimeout(flush, 400);
 }
@@ -51,7 +50,7 @@ export const error = (...a) => {
 };
 export const perf = (...a) => emit('perf', a);
 
-if (DEV) {
+if (__DEV__) {
   window.addEventListener('error', e => error('uncaught', e.message, (e.filename || '') + ':' + e.lineno, e.error || ''));
   window.addEventListener('unhandledrejection', e => error('unhandled rejection', e.reason));
 }
