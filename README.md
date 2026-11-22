@@ -163,7 +163,7 @@ tools/tveval.sh "__css('.hero-art{display:none}')"           # A/B test a CSS ch
 With `DEV_SKIP_LOGIN=1` and `PLEX_SERVER_URL` in `.env`, dev builds skip sign-in and
 use a server that allows unauthenticated local-network access.
 
-The UI also runs in desktop Chrome: `./scripts/deploy.sh --build-only`, then serve
+The UI also runs in desktop Chrome: `./scripts/deploy.sh --build-only` (unbundled `app/` does not run), then serve
 `build/app/` with any static server. It uses a `<video>` element instead of AVPlay there.
 </details>
 

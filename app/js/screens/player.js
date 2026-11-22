@@ -2,7 +2,6 @@
 // server load); otherwise ask Plex for HLS with the video passed through and
 // only the audio/container converted. Seeking previews locally and only
 // commits once the user stops pressing, because AVPlay seeks are slow.
-import { DEV } from '../config.js';
 import { h, setText, setTransform, toggleClass } from '../util/dom.js';
 import { createPlayer } from '../platform/player.js';
 import { setScreenSaver, supports4K } from '../platform/tizen.js';
@@ -175,7 +174,7 @@ export function PlayerScreen(initial, { offset = null } = {}) {
 
   function report(state) {
     if (!item.ratingKey) return;
-    if (DEV && window.__ss && window.__ss.muteTimeline) return;
+    if (__DEV__ && window.__ss && window.__ss.muteTimeline) return;
     session.server.timeline({
       ratingKey: item.ratingKey,
       key: '/library/metadata/' + item.ratingKey,
