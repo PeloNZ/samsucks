@@ -55,6 +55,7 @@ jobs:
         run: echo "version=$(cat scripts/tizen-version)" >> "$GITHUB_OUTPUT"
 
       # Only the install is cached, never the signing data (tizen-sdk-data, .tizen).
+      # tizen-cache.yml seeds this cache from main; keep its key and paths in step with these.
       # Containers run as the runner user, so files in the workspace and in the mounted home
       # stay owned by it. /etc/passwd gives that uid a name inside the image.
       # tizen-sdk is not made here: install-tizen.sh refuses an existing folder with no CLI.
