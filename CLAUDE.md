@@ -85,3 +85,17 @@ The TV CPU is slow; the README records measurements. Keep these rules:
 ## Target
 
 Tizen 4.0+ (2018 TVs, Chromium 56; the dev TV is a 2018 NU7090). The README measurements come from a 2022 Q60B (Tizen 6.5, Chromium 85). Chromium 56 has no ES modules, so the source runs on the TV only after bundling. esbuild lowers syntax to Chromium 56 but adds no polyfills: check every new web API and CSS feature against Chromium 56. `app/js/vendor/qrcode.js` is third-party; do not edit it.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels, written as `Status:` lines in issue files. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

@@ -48,3 +48,4 @@ vendor/
 .claude/agents/tizen-*.md
 .claude/hooks/tizen-sdk-skills/
 .claude/settings.local.json
+notes/
