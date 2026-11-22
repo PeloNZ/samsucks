@@ -47,11 +47,6 @@ set_env() {
 
 # --- 1. Tizen command-line tools ----------------------------------------------
 bold "1/4  Samsung Tizen tools"
-case "$(uname -s)" in
-  Darwin) INSTALLER="web-cli_Tizen_Studio_${TIZEN_VERSION}_macos-64.bin" ;;
-  Linux) INSTALLER="web-cli_Tizen_Studio_${TIZEN_VERSION}_ubuntu-64.bin" ;;
-  *) fail "Only macOS and Linux are supported (on Windows, use WSL)." ;;
-esac
 [ -f "$ENV" ] || cp "$ROOT/.env.example" "$ENV"
 TIZEN_STUDIO="$(get_env TIZEN_STUDIO)"
 TIZEN_STUDIO="${TIZEN_STUDIO/\$HOME/$HOME}"
@@ -66,46 +61,11 @@ for f in "$TIZEN" "$SDB" "$PM" "$TIZEN_STUDIO/jdk" "$HOME/.package-manager/jdk/C
 done
 [ -f "$TIZEN_STUDIO/sdk.info" ] && log "sdk.info: $(tr '\n' ' ' <"$TIZEN_STUDIO/sdk.info")"
 
-if [ -x "$TIZEN" ]; then
-  ok "already installed in $TIZEN_STUDIO"
-else
-  # The installer refuses an existing folder (and still exits 0).
-  [ ! -e "$TIZEN_STUDIO" ] || fail "$TIZEN_STUDIO exists but has no tizen CLI (a failed install?). Move it aside, then run this again."
-  # Kept across runs, so a failed install does not download again.
-  DL="$ROOT/build/downloads/$INSTALLER"
-  if [ -f "$DL" ]; then
-    ok "using downloaded $INSTALLER"
-  else
-    echo "  Downloading $INSTALLER (~270 MB)…"
-    mkdir -p "$(dirname "$DL")"
-    curl -fL -C - --progress-bar -o "$DL.part" "https://download.tizen.org/sdk/Installer/tizen-studio_${TIZEN_VERSION}/$INSTALLER"
-    mv "$DL.part" "$DL"
-  fi
-  chmod +x "$DL"
-  # On Apple Silicon, macOS kills the arm64e slice of the installer's bundled
-  # unzip; under Rosetta it runs the x86_64 slice instead.
-  if [ "$(uname -sm)" = "Darwin arm64" ]; then
-    run arch -x86_64 "$DL" --accept-license "$TIZEN_STUDIO"
-  else run "$DL" --accept-license "$TIZEN_STUDIO"; fi
-  log "tools/: $(ls "$TIZEN_STUDIO/tools" 2>&1 | tr '\n' ' ')"
-  # The installer exits 0 even when it fails.
-  [ -x "$TIZEN" ] || fail "The Tizen installer failed: $TIZEN is missing."
-  ok "installed in $TIZEN_STUDIO"
-fi
+# Prints its own progress and failure messages; `||` keeps the ERR trap from adding a second one.
+export LOG
+"$ROOT/scripts/install-tizen.sh" "$TIZEN_STUDIO" "$TIZEN_VERSION" || exit 1
 TIZEN_DATA=$(sed -n 's/^TIZEN_SDK_DATA_PATH=//p' "$TIZEN_STUDIO/sdk.info")
 log "TIZEN_DATA=$TIZEN_DATA"
-
-PACKAGES="cert-add-on TV-SAMSUNG-Public-WebAppDevelopment TV-SAMSUNG-Extension-Tools Certificate-Manager"
-PKGS=$("$PM" show-pkgs 2>&1 || true)
-log "show-pkgs: $PKGS"
-INSTALLED=$(awk '$1 == "i" { print $2 }' <<<"$PKGS")
-MISSING=""
-for p in $PACKAGES; do echo "$INSTALLED" | grep -qx "$p" || MISSING="$MISSING $p"; done
-if [ -n "$MISSING" ]; then
-  echo "  Installing Samsung TV extensions (a few minutes)…"
-  run "$PM" install --accept-license $MISSING
-fi
-ok "Samsung TV extensions"
 
 # --- 2. Find the TV -------------------------------------------------------------
 bold "2/4  Finding your TV"
