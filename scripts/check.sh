@@ -19,6 +19,38 @@ if [ "$FIX" = 1 ]; then check biome check --write .; else check biome ci .; fi
 step "esbuild: app/js lowers to Chromium 56 (Tizen 4.0)"
 check esbuild app/js/main.js --bundle --format=iife --target=chrome56 --log-level=warning --outfile=/dev/null
 
+step "Build output: release bundle has no dev code, dev bundle has it"
+build_output_check() {
+  local tmp rc=0 version
+  tmp=$(mktemp -d)
+  version=$(sed -n 's/.*widget.* version="\([^"]*\)".*/\1/p' app/config.xml)
+  ./scripts/build.sh --out "$tmp/release" >/dev/null || rc=1
+  DEV_HOST='' DEV_SKIP_LOGIN='' PLEX_SERVER_URL='' ./scripts/build.sh --dev --out "$tmp/dev" >/dev/null || rc=1
+  [ "$rc" = 0 ] || {
+    rm -rf "$tmp"
+    return 1
+  }
+  grep -q startDevRemote "$tmp/release/js/main.js" && {
+    echo "release bundle contains startDevRemote"
+    rc=1
+  }
+  grep -qF -e /cmd -e /log "$tmp/release/js/main.js" && {
+    echo "release bundle contains a devserver path (/cmd or /log)"
+    rc=1
+  }
+  grep -qF "$version" "$tmp/release/js/main.js" || {
+    echo "release bundle lacks version $version"
+    rc=1
+  }
+  grep -q startDevRemote "$tmp/dev/js/main.js" || {
+    echo "dev bundle lacks startDevRemote"
+    rc=1
+  }
+  rm -rf "$tmp"
+  return "$rc"
+}
+check build_output_check
+
 step "shellcheck (warnings and errors)"
 check shellcheck -S warning "${SHELL_FILES[@]}"
 
