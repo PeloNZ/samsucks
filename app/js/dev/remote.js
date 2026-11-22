@@ -1,6 +1,5 @@
 // Dev builds only: long-poll the devserver for key presses / snippets to run,
 // so the app can be driven and inspected from the Mac.
-import { DEV_HOST } from '../config.js';
 import { inject } from '../input.js';
 import { log, error } from '../util/log.js';
 
@@ -29,7 +28,7 @@ async function run(cmd) {
 export async function startDevRemote() {
   for (;;) {
     try {
-      const res = await fetch('http://' + DEV_HOST + '/cmd');
+      const res = await fetch('http://' + __DEV_HOST__ + '/cmd');
       const cmds = await res.json();
       for (const c of cmds) await run(c);
     } catch (e) {

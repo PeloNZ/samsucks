@@ -43,22 +43,25 @@ command -v esbuild >/dev/null || {
 rm -rf "$OUT" && mkdir -p "$(dirname "$OUT")"
 cp -R "$ROOT/app" "$OUT"
 VERSION=$(sed -n 's/.*widget.* version="\([^"]*\)".*/\1/p' "$ROOT/app/config.xml")
+# Code reads four free globals. esbuild replaces them, so a release bundle holds no dev branches
+# and no js/dev/ code.
 if [ "$DEV" = 1 ]; then
+  DEV_VALUE=true
+  HOST_VALUE="${DEV_HOST:-}"
   PLEX_URL=""
   [ "${DEV_SKIP_LOGIN:-0}" = 1 ] && PLEX_URL="${PLEX_SERVER_URL:-}"
-  cat >"$OUT/js/config.js" <<EOT
-export const DEV = true;
-export const DEV_HOST = '${DEV_HOST:-}';
-export const DEV_PLEX_URL = '$PLEX_URL';
-export const VERSION = '$VERSION';
-EOT
 else
-  sed -i.bak "s/^export const VERSION = .*/export const VERSION = '$VERSION';/" "$OUT/js/config.js" && rm "$OUT/js/config.js.bak"
+  DEV_VALUE=false
+  HOST_VALUE=""
+  PLEX_URL=""
 fi
 # Tizen 4.0 TVs run Chromium 56, which has no ES modules: bundle to one classic
-# script and lower newer syntax. In a release build, js/dev stays in the bundle
-# but never runs, because app.js imports it only when DEV is true.
-esbuild "$OUT/js/main.js" --bundle --format=iife --target=chrome56 --log-level=warning --outfile="$OUT/bundle.js"
+# script and lower newer syntax.
+esbuild "$OUT/js/main.js" --bundle --format=iife --target=chrome56 --minify-syntax --log-level=warning --outfile="$OUT/bundle.js" \
+  --define:__DEV__="$DEV_VALUE" \
+  --define:__DEV_HOST__="\"$HOST_VALUE\"" \
+  --define:__DEV_PLEX_URL__="\"$PLEX_URL\"" \
+  --define:__VERSION__="\"$VERSION\""
 rm -rf "$OUT/js" && mkdir "$OUT/js" && mv "$OUT/bundle.js" "$OUT/js/main.js"
 sed -i.bak 's| type="module"||' "$OUT/index.html" && rm "$OUT/index.html.bak"
 echo "built $([ "$DEV" = 1 ] && echo dev || echo release) $VERSION → $OUT"

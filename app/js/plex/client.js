@@ -1,5 +1,4 @@
 // Shared request plumbing for plex.tv and Plex Media Server.
-import { VERSION } from '../config.js';
 import { deviceInfo } from '../platform/tizen.js';
 import * as store from '../util/store.js';
 import { uuid } from '../util/format.js';
@@ -20,7 +19,7 @@ const device = deviceInfo();
 export function identity() {
   return {
     'X-Plex-Product': PRODUCT,
-    'X-Plex-Version': VERSION,
+    'X-Plex-Version': __VERSION__,
     'X-Plex-Client-Identifier': clientId,
     'X-Plex-Platform': device.platform,
     'X-Plex-Platform-Version': '6.5',

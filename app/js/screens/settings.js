@@ -1,5 +1,4 @@
 // Account, server and diagnostics.
-import { DEV, VERSION } from '../config.js';
 import { h, toggleClass } from '../util/dom.js';
 import { session, signOut, useServer } from '../session.js';
 import { getServers, connect } from '../plex/auth.js';
@@ -16,7 +15,11 @@ export function SettingsScreen() {
   const list = h('div', 'settings-list', el);
   const foot = h('div', 'settings-foot', el);
   foot.textContent =
-    'SamSUCKS ' + VERSION + (DEV ? ' (dev)' : '') + ' · ' + (session.server ? session.server.uri.replace(/X-Plex-Token=.*/, '') : '');
+    'SamSUCKS ' +
+    __VERSION__ +
+    (__DEV__ ? ' (dev)' : '') +
+    ' · ' +
+    (session.server ? session.server.uri.replace(/X-Plex-Token=.*/, '') : '');
 
   let index = 0;
   let items = [];
