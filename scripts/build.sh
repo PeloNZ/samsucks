@@ -4,6 +4,7 @@
 #   ./scripts/build.sh --dev          dev build: perf overlay, logs + remote control via tools/devserver.mjs
 #   ./scripts/build.sh --out DIR      write the build to DIR instead of build/app
 # With --dev, the repo's env file supplies DEV_HOST, DEV_SKIP_LOGIN and PLEX_SERVER_URL when present.
+# A value the caller already set wins over the env file.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -30,10 +31,9 @@ done
 
 ENV_FILE="$ROOT/.env"
 if [ "$DEV" = 1 ] && [ -f "$ENV_FILE" ]; then
-  set -a
-  # shellcheck source=/dev/null
-  source "$ENV_FILE"
-  set +a
+  # shellcheck source=scripts/load-env.sh
+  source "$ROOT/scripts/load-env.sh"
+  load_env "$ENV_FILE"
 fi
 
 command -v esbuild >/dev/null || {

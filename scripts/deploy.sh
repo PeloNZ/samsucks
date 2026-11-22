@@ -10,9 +10,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
   echo "No .env yet. Run ./scripts/setup.sh first." >&2
   exit 1
 }
-set -a
-source "$ROOT/.env"
-set +a
+# shellcheck source=scripts/load-env.sh
+source "$ROOT/scripts/load-env.sh"
+load_env "$ROOT/.env"
 
 DEV=0
 RUN=1
