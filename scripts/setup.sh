@@ -6,7 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV="$ROOT/.env"
-TIZEN_VERSION=6.1
+TIZEN_VERSION="$(cat "$ROOT/scripts/tizen-version")"
 
 # Tool output goes to build/setup.log, not the terminal. Each run starts a new log.
 LOG="$ROOT/build/setup.log"
