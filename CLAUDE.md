@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-SamSUCKS is a Plex client for Samsung Tizen TVs. Source is plain ES modules, no framework, no npm. `deploy.sh` bundles it with esbuild for old TVs.
+SamSUCKS is a Plex client for Samsung Tizen TVs. Source is plain ES modules, no framework, no npm. `build.sh` bundles it with esbuild for old TVs.
 
 ## Commands
 
@@ -28,13 +28,15 @@ All TV commands read `.env` (made by `./scripts/setup.sh`): `TV_IP`, `TV_SDB_POR
     ./scripts/setup.sh                # one-time: Tizen CLI, find TV, signing cert
     ./scripts/deploy.sh               # release build → package → install → launch
     ./scripts/deploy.sh --dev         # dev build: perf overlay, logs, remote control
-    ./scripts/deploy.sh --build-only  # only write build/app (no TV needed)
-    ./scripts/deploy.sh --package-only  # signed build/samsucks.wgt, no TV needed
     ./scripts/deploy.sh --no-run      # install, do not launch
+    ./scripts/build.sh [--dev]        # only write build/app (no TV, no env file needed)
+    ./scripts/package.sh              # sign build/app into build/samsucks.wgt (no TV needed)
+
+`deploy.sh` runs `build.sh`, then `package.sh`, then installs and launches. `package.sh` signs with the `TIZEN_SIGN_PROFILE` profile (default `samsucks`). When the profile is missing it makes it from `TIZEN_AUTHOR_P12` (path to the author certificate) and `TIZEN_CERT_PASSWORD`. `scripts/signing.sh` holds the shared profile code that `setup.sh` and `package.sh` source.
 
 A release build runs on the TV alone: it needs no dev host. Install it once from any computer with Developer Mode on the TV pointed at that computer, then turn Developer Mode off. An upgrade must use the same author certificate (the `samsucks` profile in the `samsucks-home` volume), or uninstall the app first.
 
-Desktop browser: unbundled `app/` does not run (it needs the build globals). Run `./scripts/deploy.sh --build-only` (or `./scripts/build.sh`), then serve `build/app/` with any static server. The UI zooms the 1920×1080 layout to fit the window and uses `<video>` instead of AVPlay.
+Desktop browser: unbundled `app/` does not run (it needs the build globals). Run `./scripts/build.sh`, then serve `build/app/` with any static server. The UI zooms the 1920×1080 layout to fit the window and uses `<video>` instead of AVPlay.
 
 ### Dev loop on the real TV
 Chrome DevTools cannot attach to a retail TV. Dev builds talk to `tools/devserver.mjs` (port 8790) on `DEV_HOST`.
