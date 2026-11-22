@@ -1,6 +1,6 @@
 # 03: Extract install-tizen.sh from setup.sh
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: None (can start immediately)
 Parent: `project/build-ci/spec.md`
 
@@ -17,3 +17,11 @@ One Tizen CLI install script that `setup.sh` and CI both call, so dev and CI use
 - [ ] Verify a cold install in an empty directory in the dev container.
 - [ ] `check.sh` passes, including shellcheck and shfmt.
 - [ ] Test-first does not apply (script move). The ticket report says so.
+
+## Comments
+
+Resolved on `build-ci` (merge 5d619ac). `scripts/install-tizen.sh <install-dir> <version>` holds the install step. Test-first skipped: script move.
+
+Checked: `setup.sh` on the existing install prints "already installed" and the TV extensions line; an existing folder with no `tizen` binary is refused (rc 1); no arguments prints usage (rc 2); a cold install into an empty directory succeeded (about 12 minutes, rc 0, `tizen` binary present); the download stays in `build/downloads/`; `check.sh` exit 0.
+
+Note: the TIZEN_DATA log line now follows the packages step in `build/setup.log`. The Tizen version now lives in `scripts/tizen-version` (added by ticket 06).

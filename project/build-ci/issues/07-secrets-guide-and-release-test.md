@@ -19,3 +19,9 @@ This ticket needs the developer: the certificate and password live on their mach
 - [ ] The `.wgt` from that Release installs over the current app on the dev TV with no uninstall, and the app keeps its sign-in.
 - [ ] The throwaway Release and tag are deleted afterwards.
 - [ ] A tag that differs from `config.xml` fails the release job (run once, then delete the tag).
+
+## Comments
+
+Agent part done on `build-ci` (merge 9548925): README section with the `base64` and `gh secret set` commands for `TIZEN_AUTHOR_P12_BASE64` and `TIZEN_CERT_PASSWORD`, the backup advice with the ADR 0005 reason, and the tag steps. Criteria 1 and 2 are done. The commands were not run, because running them reads the certificate and sets secrets.
+
+Left for the developer: set the secrets; the throwaway release; install the `.wgt` over the app on the dev TV; delete the Release and tag; run the mismatched-tag test.
