@@ -3,16 +3,16 @@
 #   ./scripts/package.sh
 # Signs with the profile TIZEN_SIGN_PROFILE (default samsucks). When the profile is
 # missing, it is made from TIZEN_AUTHOR_P12 (path to the author certificate) and
-# TIZEN_CERT_PASSWORD. The repo's env file supplies these when present.
+# TIZEN_CERT_PASSWORD. The repo's env file supplies these when present;
+# a value the caller already set wins.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/.env"
 if [ -f "$ENV_FILE" ]; then
-  set -a
-  # shellcheck source=/dev/null
-  source "$ENV_FILE"
-  set +a
+  # shellcheck source=scripts/load-env.sh
+  source "$ROOT/scripts/load-env.sh"
+  load_env "$ENV_FILE"
 fi
 
 TIZEN_STUDIO="${TIZEN_STUDIO:-$HOME/tizen-sdk}"

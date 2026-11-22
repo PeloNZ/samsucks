@@ -57,9 +57,10 @@ jobs:
       # Only the install is cached, never the signing data (tizen-sdk-data, .tizen).
       # Containers run as the runner user, so files in the workspace and in the mounted home
       # stay owned by it. /etc/passwd gives that uid a name inside the image.
+      # tizen-sdk is not made here: install-tizen.sh refuses an existing folder with no CLI.
       - name: Prepare the Tizen home
         run: |
-          mkdir -p "$RUNNER_TEMP/dev-home/tizen-sdk" "$RUNNER_TEMP/dev-home/.package-manager"
+          mkdir -p "$RUNNER_TEMP/dev-home/.package-manager"
           echo "DEV_HOME=$RUNNER_TEMP/dev-home" >> "$GITHUB_ENV"
 
       - name: Restore the Tizen CLI install
