@@ -85,7 +85,7 @@ export function boot() {
   router.init(document.getElementById('app'));
   initHud(() => (router.top() && router.top().name) || '');
   window.addEventListener('samsucks:restart', start);
-  // Dev builds only. Release bundles include js/dev/ but never run it.
+  // Dev builds only. esbuild folds __DEV__ to false in release, so the bundle holds no js/dev/ code.
   if (__DEV__ && __DEV_HOST__) import('./dev/remote.js').then(m => m.startDevRemote());
   start();
   const splash = document.getElementById('splash');

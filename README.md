@@ -201,7 +201,7 @@ docker run --rm -v samsucks-home:/v:ro alpine cat /v/tizen-sdk-data/keystore/aut
 chmod 600 samsucks.p12
 ```
 
-Move `samsucks.p12` into the backup, then delete it from the working folder.
+Move `samsucks.p12` into the backup, then delete it from the working folder. Never commit it.
 
 **Cut a release.** Set `version` in `app/config.xml` to `X.Y.Z` and merge it. Then tag and push:
 
@@ -226,9 +226,9 @@ scripts/        setup.sh (one-time), build.sh, package.sh (signed .wgt, no TV) a
 tools/          dev server, TV eval, network remote
 ```
 
-There's no bundler. The TV's browser (Chromium 69+ on Tizen 5.5+) runs ES modules
-natively, and the build adds `<link rel="modulepreload">` tags so every module loads
-in parallel (about 0.9 s cold start, versus 0.8 s for a minified bundle).
+`build.sh` bundles `app/js/main.js` with esbuild into one classic script
+(`--format=iife --target=chrome56`), because Tizen 4.0 TVs run Chromium 56, which has no ES
+modules. esbuild lowers new syntax but adds no polyfills. A release bundle holds no dev code.
 </details>
 
 <details>
